@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { StudioContent } from "./studio-content";
 
 export const metadata = {
@@ -6,5 +7,9 @@ export const metadata = {
 };
 
 export default function Home() {
-  return <StudioContent />;
+  return (
+    <Suspense fallback={null}>
+      <StudioContent />
+    </Suspense>
+  );
 }

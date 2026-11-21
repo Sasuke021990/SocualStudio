@@ -1,4 +1,4 @@
-export const CONTENT_STATUSES = ["draft", "in-progress", "approved", "published"] as const;
+export const CONTENT_STATUSES = ["draft", "approved", "published"] as const;
 export type ContentStatus = (typeof CONTENT_STATUSES)[number];
 
 export const CONTENT_TYPES = [
@@ -30,6 +30,16 @@ export interface ContentItem {
   output: string;
   status: ContentStatus;
   platform: string;
+  variation?: {
+    imageConcept: Record<string, string>;
+    soundPrompt: string;
+    caption: string;
+    hashtags: string[];
+    cta: string;
+    generatedImage?: string | null;
+    voiceAudio?: string | null;
+    sfxAudio?: string | null;
+  };
   createdAt: string;
   updatedAt: string;
 }

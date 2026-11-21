@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { ProviderSettingsForm } from "@/features/ai-provider/components/ProviderSettingsForm";
 import { BrandBrainSetup } from "@/features/brand-brain/components/BrandBrainSetup";
 import { ContentDashboard } from "@/features/content-dashboard/components/ContentDashboard";
 import { ComfyUISetup } from "@/features/comfyui/components/ComfyUISetup";
 import { VoiceSetup } from "@/features/voice/components/VoiceSetup";
+import { WorkspaceSetup } from "@/features/workspace-config/components/WorkspaceSetup";
 
 type Step = "configure" | "brand" | "generate";
 
@@ -16,7 +18,8 @@ const STEPS: Array<{ id: Step; label: string }> = [
 ];
 
 export function StudioContent() {
-  const [step, setStep] = useState<Step>("configure");
+  const searchParams = useSearchParams();
+  const [step, setStep] = useState<Step>(searchParams.get("step") === "generate" ? "generate" : "configure");
   const [brainId, setBrainId] = useState("");
   const [brandName, setBrandName] = useState("");
 
@@ -113,38 +116,37 @@ export function StudioContent() {
         })}
       </nav>
 
-      {/* Studio content */}
+      {/* Studio content — all steps stay mounted so generation state survives navigation */}
       <section id="studio" className="relative mx-auto w-full max-w-5xl px-6 pb-20 pt-8">
-        <div key={step} className="animate-rise transition-all duration-500">
-          {step === "configure" && (
-            <div className="flex flex-col gap-6">
-              <ProviderSettingsForm onSaved={() => setStep("brand")} />
-              <VoiceSetup />
-              <ComfyUISetup />
+        <div className={step === "configure" ? "" : "hidden"}>
+          <div className="flex flex-col gap-6">
+            <ProviderSettingsForm onSaved={() => setStep("brand")} />
+            <WorkspaceSetup />
+            <VoiceSetup />
+            <ComfyUISetup />
+          </div>
+        </div>
+        <div className={step === "brand" ? "" : "hidden"}>
+          <BrandBrainSetup
+            brainId={brainId}
+            onSaved={(brand) => {
+              setBrandName(brand.brandName);
+              setStep("generate");
+            }}
+          />
+        </div>
+        <div className={step === "generate" ? "" : "hidden"}>
+          {brandName ? (
+            <ContentDashboard brandName={brandName} brainId={brainId} />
+          ) : (
+            <div className="glass-card p-8 text-center">
+              <p className="text-zinc-600 dark:text-zinc-400">
+                Select or create a project in Step 2 first to see the content dashboard.
+              </p>
+              <button type="button" className="btn-primary mt-4" onClick={() => setStep("brand")}>
+                Go to Step 2 — Project / Brand
+              </button>
             </div>
-          )}
-          {step === "brand" && (
-            <BrandBrainSetup
-              brainId={brainId}
-              onSaved={(brand) => {
-                setBrandName(brand.brandName);
-                setStep("generate");
-              }}
-            />
-          )}
-          {step === "generate" && (
-            brandName ? (
-              <ContentDashboard brandName={brandName} brainId={brainId} />
-            ) : (
-              <div className="glass-card p-8 text-center">
-                <p className="text-zinc-600 dark:text-zinc-400">
-                  Select or create a project in Step 2 first to see the content dashboard.
-                </p>
-                <button type="button" className="btn-primary mt-4" onClick={() => setStep("brand")}>
-                  Go to Step 2 — Project / Brand
-                </button>
-              </div>
-            )
           )}
         </div>
       </section>

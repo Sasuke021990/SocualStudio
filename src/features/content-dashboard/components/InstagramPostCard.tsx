@@ -4,6 +4,8 @@ import { useState } from "react";
 import type { PostVariation } from "../variations";
 import { assembleImagePrompt } from "../variations";
 import { exclusivePlay } from "@/features/voice/audio-coordinator";
+import { acquireGenerationLock, releaseGenerationLock } from "../generation-lock";
+import { useGenerationLocked } from "../useGenerationLock";
 
 interface InstagramPostCardProps {
   variation: PostVariation;
@@ -12,6 +14,7 @@ interface InstagramPostCardProps {
   brandName: string;
   toolId?: string | null;
   voices?: Array<{ id: string; name: string; kind: string }>;
+  onMediaChange?: (variationId: string, media: { image?: string | null; voiceAudio?: string | null; sfxAudio?: string | null }) => void;
 }
 
 interface GeneratedImage {
@@ -28,7 +31,7 @@ interface GeneratedSfx {
   audio: GeneratedAudio;
 }
 
-export function InstagramPostCard({ variation, selected, onToggleSelect, brandName, toolId, voices }: InstagramPostCardProps) {
+export function InstagramPostCard({ variation, selected, onToggleSelect, brandName, toolId, voices, onMediaChange }: InstagramPostCardProps) {
   const [image, setImage] = useState<GeneratedImage | null>(null);
   const [generatingImage, setGeneratingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
@@ -39,9 +42,11 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
   const [sfx, setSfx] = useState<GeneratedSfx | null>(null);
   const [generatingSfx, setGeneratingSfx] = useState(false);
   const [sfxError, setSfxError] = useState<string | null>(null);
+  const anyGenerating = useGenerationLocked();
 
   const generateImage = async () => {
     if (generatingImage) return;
+    if (!acquireGenerationLock(`img-${variation.id}`)) return;
     setGeneratingImage(true);
     setImageError(null);
     try {
@@ -56,6 +61,7 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
       if (!res.ok) throw new Error(data.error ?? "Image generation failed");
       if (data.images?.length) {
         setImage(data.images[0]);
+        onMediaChange?.(variation.id, { image: data.images[0].url });
       } else {
         throw new Error("No image returned");
       }
@@ -63,11 +69,13 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
       setImageError(err instanceof Error ? err.message : "Image generation failed");
     } finally {
       setGeneratingImage(false);
+      releaseGenerationLock(`img-${variation.id}`);
     }
   };
 
   const generateAudio = async () => {
     if (generatingAudio || !voices?.length) return;
+    if (!acquireGenerationLock(`vo-${variation.id}`)) return;
     const selectedVoice = voiceId || voices[0].id;
     setGeneratingAudio(true);
     setAudioError(null);
@@ -84,6 +92,7 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
       if (!res.ok) throw new Error(data.error ?? "Voice generation failed");
       if (data.audio) {
         setAudio(data.audio);
+        onMediaChange?.(variation.id, { voiceAudio: data.audio.url });
       } else {
         throw new Error("No audio returned");
       }
@@ -91,11 +100,13 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
       setAudioError(err instanceof Error ? err.message : "Voice generation failed");
     } finally {
       setGeneratingAudio(false);
+      releaseGenerationLock(`vo-${variation.id}`);
     }
   };
 
   const generateSfx = async () => {
     if (generatingSfx) return;
+    if (!acquireGenerationLock(`sfx-${variation.id}`)) return;
     setGeneratingSfx(true);
     setSfxError(null);
     try {
@@ -113,10 +124,12 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
       const data = (await res.json()) as GeneratedSfx & { error?: string };
       if (!res.ok) throw new Error(data.error ?? "Sound generation failed");
       setSfx(data);
+      onMediaChange?.(variation.id, { sfxAudio: data.audio.url });
     } catch (err) {
       setSfxError(err instanceof Error ? err.message : "Sound generation failed");
     } finally {
       setGeneratingSfx(false);
+      releaseGenerationLock(`sfx-${variation.id}`);
     }
   };
 
@@ -179,7 +192,7 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); generateImage(); }}
-              disabled={generatingImage}
+              disabled={generatingImage || (anyGenerating && !generatingImage)}
               className="absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full bg-white/90 px-4 py-2 text-xs font-semibold text-zinc-800 shadow-lg transition hover:bg-white disabled:opacity-70"
             >
               {generatingImage ? (
@@ -311,7 +324,7 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
                 type="button"
                 className="rounded-full border border-zinc-200 px-2.5 py-1 text-[10px] text-zinc-500 transition hover:bg-zinc-100"
                 onClick={() => { setAudio(null); generateAudio(); }}
-                disabled={generatingAudio}
+                disabled={generatingAudio || (anyGenerating && !generatingAudio)}
                 aria-label="Regenerate voice"
               >
                 🔄
@@ -335,7 +348,7 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
               <button
                 type="button"
                 className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-rose-500 to-orange-500 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
-                disabled={generatingAudio}
+                disabled={generatingAudio || (anyGenerating && !generatingAudio)}
                 onClick={generateAudio}
               >
                 {generatingAudio ? (
@@ -366,7 +379,7 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
                   type="button"
                   className="rounded-full border border-zinc-200 px-2.5 py-1 text-[10px] text-zinc-500 transition hover:bg-zinc-100"
                   onClick={() => { setSfx(null); generateSfx(); }}
-                  disabled={generatingSfx}
+                  disabled={generatingSfx || (anyGenerating && !generatingSfx)}
                   aria-label="Regenerate sound"
                 >
                   🔄
@@ -376,7 +389,7 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
               <button
                 type="button"
                 className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-zinc-600 transition hover:border-purple-300 hover:text-purple-600 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                disabled={generatingSfx}
+                disabled={generatingSfx || (anyGenerating && !generatingSfx)}
                 onClick={generateSfx}
               >
                 {generatingSfx ? (

@@ -28,9 +28,39 @@ function injectPrompt(workflow: Record<string, unknown>, prompt: string, negativ
         node.inputs.text = prompt;
       }
     }
+
+    // Qwen image pipelines: TextEncodeQwenImage21 (encoder) + TextGenerate (prompt-rewriter LLM).
+    // The encoder's prompt input may be a node link (e.g. through a switch node that can
+    // route an empty string) — replace it with the literal prompt so our text always wins.
+    if (ct.startsWith("TextEncodeQwen")) {
+      if ("prompt" in node.inputs) {
+        node.inputs.prompt = prompt;
+      }
+      if (negativePrompt && "negative_prompt" in node.inputs) {
+        node.inputs.negative_prompt = negativePrompt;
+      }
+    }
+    if (ct === "TextGenerate" && "prompt" in node.inputs) {
+      node.inputs.prompt = prompt;
+    }
     // EmptyLatentImage for size
     if (ct === "EmptyLatentImage" && node.inputs) {
       // leave width/height as configured in workflow
+    }
+
+    // Randomize seeds so each generation produces a different image.
+    // Walk inputs recursively — some workflows nest seeds (e.g. sampling_mode.seed).
+    if (node.inputs) {
+      const randomizeSeeds = (obj: Record<string, unknown>) => {
+        for (const [key, value] of Object.entries(obj)) {
+          if (typeof value === "number" && /seed/i.test(key)) {
+            obj[key] = Math.floor(Math.random() * 2 ** 32);
+          } else if (value && typeof value === "object" && !Array.isArray(value)) {
+            randomizeSeeds(value as Record<string, unknown>);
+          }
+        }
+      };
+      randomizeSeeds(node.inputs);
     }
   }
   return cloned;

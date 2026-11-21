@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { CONTENT_TEMPLATES, type ContentTemplate, type ContentItem, type ContentStatus } from "../types";
+import { CONTENT_TEMPLATES, type ContentTemplate, type ContentItem } from "../types";
 import { CONTENT_GOALS, type ContentGoal } from "../goals";
 import type { PostVariation } from "../variations";
+import { acquireGenerationLock, releaseGenerationLock } from "../generation-lock";
+import { useGenerationLocked } from "../useGenerationLock";
 import { InstagramPostCard } from "./InstagramPostCard";
 
 interface ComfyUIConnection {
@@ -17,7 +19,6 @@ interface ComfyUIConnection {
 interface Stats {
   total: number;
   draft: number;
-  inProgress: number;
   approved: number;
   published: number;
 }
@@ -27,7 +28,7 @@ type View = "dashboard" | "creating";
 export function ContentDashboard({ brandName, brainId }: { brandName: string; brainId: string }) {
   const [view, setView] = useState<View>("dashboard");
   const [items, setItems] = useState<ContentItem[]>([]);
-  const [stats, setStats] = useState<Stats>({ total: 0, draft: 0, inProgress: 0, approved: 0, published: 0 });
+  const [stats, setStats] = useState<Stats>({ total: 0, draft: 0, approved: 0, published: 0 });
   const [activeTemplate, setActiveTemplate] = useState<ContentTemplate | null>(null);
   const [selectedGoal, setSelectedGoal] = useState<ContentGoal | null>(null);
   const [customGoalText, setCustomGoalText] = useState("");
@@ -43,7 +44,53 @@ export function ContentDashboard({ brandName, brainId }: { brandName: string; br
   const [activeConnectionId, setActiveConnectionId] = useState<string | null>(null);
   const [selectedToolId, setSelectedToolId] = useState<string | null>(null);
   const [voices, setVoices] = useState<Array<{ id: string; name: string; kind: string }>>([]);
+  const [mediaMap, setMediaMap] = useState<Record<string, { image?: string | null; voiceAudio?: string | null; sfxAudio?: string | null }>>({});
   const abortRef = useRef<AbortController | null>(null);
+
+  // Per-template create-view state stash — survives template switching + navigation
+  const stashRef = useRef<Record<string, {
+    goal: ContentGoal | null;
+    customText: string;
+    topic: string;
+    variations: PostVariation[];
+    selectedIds: string[];
+  }>>({});
+
+  const stashCurrent = () => {
+    if (activeTemplate) {
+      stashRef.current[activeTemplate.id] = {
+        goal: selectedGoal,
+        customText: customGoalText,
+        topic,
+        variations,
+        selectedIds: [...selectedIds],
+      };
+    }
+  };
+
+  const openTemplate = (tpl: ContentTemplate) => {
+    const stashed = stashRef.current[tpl.id];
+    setActiveTemplate(tpl);
+    setView("creating");
+    setError(null);
+    if (stashed) {
+      setSelectedGoal(stashed.goal);
+      setCustomGoalText(stashed.customText);
+      setTopic(stashed.topic);
+      setVariations(stashed.variations);
+      setSelectedIds(new Set(stashed.selectedIds));
+    } else {
+      setSelectedGoal(null);
+      setCustomGoalText("");
+      setTopic("");
+      setVariations([]);
+      setSelectedIds(new Set());
+    }
+  };
+
+  const handleMediaChange = useCallback((variationId: string, media: { image?: string | null; voiceAudio?: string | null; sfxAudio?: string | null }) => {
+    setMediaMap((prev) => ({ ...prev, [variationId]: { ...prev[variationId], ...media } }));
+  }, []);
 
   // Load ComfyUI connections for the image tool selector + voices for voice-over
   useEffect(() => {
@@ -68,13 +115,13 @@ export function ContentDashboard({ brandName, brainId }: { brandName: string; br
 
   const loadDashboard = useCallback(async () => {
     try {
-      const res = await fetch(`/api/content-dashboard?brainId=${encodeURIComponent(brainId)}`);
+      const res = await fetch(`/api/content-dashboard?brandName=${encodeURIComponent(brandName)}`, { cache: "no-store" });
       const data = await res.json() as { items?: ContentItem[]; stats?: Stats };
       setItems(data.items ?? []);
       if (data.stats) setStats(data.stats);
     } catch { /* keep empty */ }
     setLoaded(true);
-  }, [brainId]);
+  }, [brandName]);
 
   useEffect(() => {
     if (!loaded) {
@@ -83,10 +130,13 @@ export function ContentDashboard({ brandName, brainId }: { brandName: string; br
     }
   }, [loaded, loadDashboard]);
 
+  const anyGenerating = useGenerationLocked();
+
   const generateBatch = async (isRegenerate = false) => {
     if (!activeTemplate || generating) return;
     if (selectedGoal?.id === "custom" && !customGoalText.trim()) return;
     if (!selectedGoal) return;
+    if (!acquireGenerationLock("batch")) return;
     const controller = new AbortController();
     abortRef.current = controller;
     setGenerating(true);
@@ -167,6 +217,7 @@ export function ContentDashboard({ brandName, brainId }: { brandName: string; br
       setGenerating(false);
       setGenPhase("");
       abortRef.current = null;
+      releaseGenerationLock("batch");
     }
   };
 
@@ -190,6 +241,7 @@ export function ContentDashboard({ brandName, brainId }: { brandName: string; br
     try {
       const toSave = variations.filter((v) => selectedIds.has(v.id));
       for (const v of toSave) {
+        const media = mediaMap[v.id] ?? {};
         await fetch("/api/content-dashboard", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -201,6 +253,16 @@ export function ContentDashboard({ brandName, brainId }: { brandName: string; br
             prompt: activeTemplate.defaultPrompt.replace("{topic}", topic),
             output: `${v.caption}\n\n${v.hashtags.map((h) => `#${h}`).join(" ")}\n\nCTA: ${v.cta}\n\nImage concept: ${v.imageConcept}`,
             platform: activeTemplate.platform,
+            variation: {
+              imageConcept: v.imageConcept as unknown as Record<string, string>,
+              soundPrompt: v.soundPrompt ?? "",
+              caption: v.caption,
+              hashtags: v.hashtags,
+              cta: v.cta,
+              generatedImage: media.image ?? null,
+              voiceAudio: media.voiceAudio ?? null,
+              sfxAudio: media.sfxAudio ?? null,
+            },
           }),
         });
       }
@@ -217,16 +279,7 @@ export function ContentDashboard({ brandName, brainId }: { brandName: string; br
     }
   };
 
-  const updateStatus = async (id: string, status: ContentStatus) => {
-    try {
-      await fetch("/api/content-dashboard", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status }),
-      });
-      loadDashboard();
-    } catch { /* ignore */ }
-  };
+
 
   // ─── CREATE VIEW ─────────────────────────────────────────────
   if (view === "creating" && activeTemplate) {
@@ -247,7 +300,7 @@ export function ContentDashboard({ brandName, brainId }: { brandName: string; br
             <button
               type="button"
               className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
-              onClick={() => { setView("dashboard"); setActiveTemplate(null); setTopic(""); setVariations([]); setSelectedIds(new Set()); setError(null); }}
+              onClick={() => { stashCurrent(); setView("dashboard"); setActiveTemplate(null); setError(null); }}
             >
               ← Dashboard
             </button>
@@ -298,7 +351,7 @@ export function ContentDashboard({ brandName, brainId }: { brandName: string; br
                 <button
                   type="button"
                   className="btn-primary"
-                  disabled={generating || (selectedGoal.id === "custom" && !customGoalText.trim())}
+                  disabled={generating || (selectedGoal.id === "custom" && !customGoalText.trim()) || (anyGenerating && !generating)}
                   onClick={() => generateBatch()}
                 >
                   {generating ? (
@@ -409,6 +462,7 @@ export function ContentDashboard({ brandName, brainId }: { brandName: string; br
                   brandName={brandName}
                   toolId={selectedToolId}
                   voices={voices}
+                  onMediaChange={handleMediaChange}
                 />
               ))}
             </div>
@@ -463,7 +517,6 @@ export function ContentDashboard({ brandName, brainId }: { brandName: string; br
         <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
           <StatCard label="Total" value={stats.total} icon="📊" color="from-zinc-500 to-zinc-600" />
           <StatCard label="Drafts" value={stats.draft} icon="📝" color="from-amber-400 to-orange-500" />
-          <StatCard label="In Progress" value={stats.inProgress} icon="🔄" color="from-blue-400 to-blue-600" />
           <StatCard label="Approved" value={stats.approved} icon="✅" color="from-emerald-400 to-green-600" />
           <StatCard label="Published" value={stats.published} icon="🚀" color="from-violet-500 to-fuchsia-500" />
         </div>
@@ -480,7 +533,7 @@ export function ContentDashboard({ brandName, brainId }: { brandName: string; br
             <button
               key={tpl.id}
               type="button"
-              onClick={() => { setActiveTemplate(tpl); setView("creating"); setVariations([]); setSelectedIds(new Set()); setError(null); }}
+              onClick={() => openTemplate(tpl)}
               className="group flex flex-col items-start gap-2 rounded-xl border border-zinc-200 bg-white/60 p-4 text-left transition hover:-translate-y-1 hover:border-violet-300 hover:shadow-lg dark:border-zinc-700 dark:bg-zinc-900/60 dark:hover:border-fuchsia-500"
             >
               <div className={`flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br ${tpl.color} text-xl shadow-md`}>
@@ -496,50 +549,71 @@ export function ContentDashboard({ brandName, brainId }: { brandName: string; br
         </div>
       </div>
 
-      {/* Recent content */}
+      {/* Saved Insta Posts */}
       <div className="glass-card p-6">
-        <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">Recent Content</h3>
-        {items.length === 0 ? (
+        <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">Draft Insta Posts</h3>
+        {items.filter((i) => i.status !== "approved").length === 0 ? (
           <div className="mt-4 flex flex-col items-center gap-3 py-8 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-violet-100 to-fuchsia-100 dark:from-violet-950 dark:to-fuchsia-950">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-violet-500">
-                <path d="M12 6v6l4 2" strokeLinecap="round" strokeLinejoin="round" />
-                <circle cx="12" cy="12" r="10" />
+                <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
-            <p className="text-sm text-zinc-500">No content yet. Pick a template above to get started.</p>
+            <p className="text-sm text-zinc-500">No draft posts yet. Select posts above and hit Save.</p>
           </div>
         ) : (
           <div className="mt-4 space-y-3">
-            {items.map((item) => {
-              const tpl = CONTENT_TEMPLATES.find((t) => t.id === item.type);
-              return (
-                <div key={item.id} className="flex items-center gap-4 rounded-xl border border-zinc-200 bg-white/60 p-4 dark:border-zinc-700 dark:bg-zinc-900/60">
-                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${tpl?.color ?? "from-zinc-400 to-zinc-500"} text-xl shadow-md`}>
-                    {tpl?.icon ?? "📄"}
+            {items.filter((i) => i.status !== "approved").map((item) => (
+              <a
+                key={item.id}
+                href={`/workspace/${item.id}`}
+                className="flex items-center gap-4 rounded-xl border border-zinc-200 bg-white/60 p-4 transition hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-md dark:border-zinc-700 dark:bg-zinc-900/60 dark:hover:border-fuchsia-500"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">{item.title}</div>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-xs text-zinc-500">
+                    <span className="rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+                      {item.brandName}
+                    </span>
+                    <span>{item.platform} · {new Date(item.createdAt).toLocaleDateString()}</span>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">{item.title}</div>
-                    <div className="text-xs text-zinc-500">{item.platform} · {new Date(item.createdAt).toLocaleDateString()}</div>
-                  </div>
-                  <StatusBadge status={item.status} />
-                  <select
-                    className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-800"
-                    value={item.status}
-                    onChange={(e) => updateStatus(item.id, e.target.value as ContentStatus)}
-                    aria-label="Change status"
-                  >
-                    <option value="draft">Draft</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="approved">Approved</option>
-                    <option value="published">Published</option>
-                  </select>
                 </div>
-              );
-            })}
+                <span className="text-xs text-violet-500">Open in Workspace →</span>
+              </a>
+            ))}
           </div>
         )}
       </div>
+
+      {/* Approved */}
+      {items.filter((i) => i.status === "approved").length > 0 && (
+        <div className="glass-card p-6">
+          <h3 className="flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+            <span className="rounded-full bg-emerald-500 px-2.5 py-0.5 text-xs font-bold text-white">✓</span>
+            Approved
+          </h3>
+          <div className="mt-4 space-y-3">
+            {items.filter((i) => i.status === "approved").map((item) => (
+              <a
+                key={item.id}
+                href={`/approved/${item.id}`}
+                className="flex items-center gap-4 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 transition hover:-translate-y-0.5 hover:shadow-md dark:border-emerald-800 dark:bg-emerald-950/20"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">{item.title}</div>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-xs text-zinc-500">
+                    <span className="rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+                      {item.brandName}
+                    </span>
+                    <span>{item.platform} · {new Date(item.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+                <span className="text-xs text-emerald-600">✓ Approved</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -560,16 +634,4 @@ function StatCard({ label, value, icon, color }: { label: string; value: number;
   );
 }
 
-function StatusBadge({ status }: { status: ContentStatus }) {
-  const styles: Record<ContentStatus, string> = {
-    "draft": "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-    "in-progress": "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-    "approved": "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-    "published": "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
-  };
-  return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${styles[status]}`}>
-      {status}
-    </span>
-  );
-}
+
