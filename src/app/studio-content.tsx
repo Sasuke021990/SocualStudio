@@ -5,6 +5,7 @@ import { ProviderSettingsForm } from "@/features/ai-provider/components/Provider
 import { BrandBrainSetup } from "@/features/brand-brain/components/BrandBrainSetup";
 import { ContentDashboard } from "@/features/content-dashboard/components/ContentDashboard";
 import { ComfyUISetup } from "@/features/comfyui/components/ComfyUISetup";
+import { VoiceSetup } from "@/features/voice/components/VoiceSetup";
 
 type Step = "configure" | "brand" | "generate";
 
@@ -118,6 +119,7 @@ export function StudioContent() {
           {step === "configure" && (
             <div className="flex flex-col gap-6">
               <ProviderSettingsForm onSaved={() => setStep("brand")} />
+              <VoiceSetup />
               <ComfyUISetup />
             </div>
           )}

@@ -28,6 +28,7 @@ const captionWrapSchema = z.object({
 
 const imageFromCaptionSchema = z.object({
   imageConcept: imageConceptSchema,
+  soundPrompt: z.string(),
 });
 
 /**
@@ -103,7 +104,8 @@ Schema:
     "composition": string,  // Camera angle, lens, framing, negative space for text
     "mood": string,         // Emotional atmosphere matching the caption
     "technical": string     // Quality tags + "correct spelling on any text elements"
-  }
+  },
+  "soundPrompt": string     // 20-30 word sound-effect description matched to the caption's mood: 2-3 layered concrete sounds (textures, rhythms, ambience). e.g. "soft cash register chime, gentle coin jingling, light paper shuffling with a warm ambient hum"
 }
 Return ONLY valid JSON — no markdown fences, no prose.`;
 
@@ -141,6 +143,7 @@ Return ONLY valid JSON — no markdown fences, no prose.`;
               variation: {
                 id: `var-${Date.now()}-${i}`,
                 imageConcept: imageResult.imageConcept,
+                soundPrompt: imageResult.soundPrompt,
                 caption: cap.caption,
                 hashtags: cap.hashtags,
                 cta: cap.cta,

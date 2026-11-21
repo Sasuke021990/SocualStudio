@@ -42,9 +42,10 @@ export function ContentDashboard({ brandName, brainId }: { brandName: string; br
   const [connections, setConnections] = useState<ComfyUIConnection[]>([]);
   const [activeConnectionId, setActiveConnectionId] = useState<string | null>(null);
   const [selectedToolId, setSelectedToolId] = useState<string | null>(null);
+  const [voices, setVoices] = useState<Array<{ id: string; name: string; kind: string }>>([]);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Load ComfyUI connections for the image tool selector
+  // Load ComfyUI connections for the image tool selector + voices for voice-over
   useEffect(() => {
     const t = setTimeout(() => {
       fetch("/api/comfyui")
@@ -53,6 +54,12 @@ export function ContentDashboard({ brandName, brainId }: { brandName: string; br
           setConnections(data.connections ?? []);
           setActiveConnectionId(data.activeId ?? null);
           setSelectedToolId((prev) => prev ?? data.activeId ?? null);
+        })
+        .catch(() => {});
+      fetch("/api/voice")
+        .then((res) => res.json())
+        .then((data: { presets?: Array<{ id: string; name: string; kind: string }>; cloned?: Array<{ id: string; name: string; kind: string }> }) => {
+          setVoices([...(data.cloned ?? []), ...(data.presets ?? [])]);
         })
         .catch(() => {});
     }, 0);
@@ -401,6 +408,7 @@ export function ContentDashboard({ brandName, brainId }: { brandName: string; br
                   onToggleSelect={() => toggleSelect(v.id)}
                   brandName={brandName}
                   toolId={selectedToolId}
+                  voices={voices}
                 />
               ))}
             </div>

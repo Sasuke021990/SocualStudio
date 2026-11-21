@@ -17,6 +17,7 @@ export type ImageConcept = z.infer<typeof imageConceptSchema>;
 export const postVariationSchema = z.object({
   id: z.string(),
   imageConcept: imageConceptSchema,
+  soundPrompt: z.string(),
   caption: z.string(),
   hashtags: z.array(z.string()),
   cta: z.string(),

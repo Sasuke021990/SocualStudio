@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { PostVariation } from "../variations";
 import { assembleImagePrompt } from "../variations";
+import { exclusivePlay } from "@/features/voice/audio-coordinator";
 
 interface InstagramPostCardProps {
   variation: PostVariation;
@@ -10,6 +11,7 @@ interface InstagramPostCardProps {
   onToggleSelect: () => void;
   brandName: string;
   toolId?: string | null;
+  voices?: Array<{ id: string; name: string; kind: string }>;
 }
 
 interface GeneratedImage {
@@ -17,10 +19,26 @@ interface GeneratedImage {
   filename: string;
 }
 
-export function InstagramPostCard({ variation, selected, onToggleSelect, brandName, toolId }: InstagramPostCardProps) {
+interface GeneratedAudio {
+  url: string;
+}
+
+interface GeneratedSfx {
+  soundPrompt: string;
+  audio: GeneratedAudio;
+}
+
+export function InstagramPostCard({ variation, selected, onToggleSelect, brandName, toolId, voices }: InstagramPostCardProps) {
   const [image, setImage] = useState<GeneratedImage | null>(null);
   const [generatingImage, setGeneratingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [audio, setAudio] = useState<GeneratedAudio | null>(null);
+  const [generatingAudio, setGeneratingAudio] = useState(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
+  const [voiceId, setVoiceId] = useState<string>("");
+  const [sfx, setSfx] = useState<GeneratedSfx | null>(null);
+  const [generatingSfx, setGeneratingSfx] = useState(false);
+  const [sfxError, setSfxError] = useState<string | null>(null);
 
   const generateImage = async () => {
     if (generatingImage) return;
@@ -45,6 +63,60 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
       setImageError(err instanceof Error ? err.message : "Image generation failed");
     } finally {
       setGeneratingImage(false);
+    }
+  };
+
+  const generateAudio = async () => {
+    if (generatingAudio || !voices?.length) return;
+    const selectedVoice = voiceId || voices[0].id;
+    setGeneratingAudio(true);
+    setAudioError(null);
+    try {
+      const res = await fetch("/api/voice/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: variation.caption,
+          voiceId: selectedVoice,
+        }),
+      });
+      const data = (await res.json()) as { audio?: GeneratedAudio; error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Voice generation failed");
+      if (data.audio) {
+        setAudio(data.audio);
+      } else {
+        throw new Error("No audio returned");
+      }
+    } catch (err) {
+      setAudioError(err instanceof Error ? err.message : "Voice generation failed");
+    } finally {
+      setGeneratingAudio(false);
+    }
+  };
+
+  const generateSfx = async () => {
+    if (generatingSfx) return;
+    setGeneratingSfx(true);
+    setSfxError(null);
+    try {
+      const imageConceptText = Object.values(variation.imageConcept).join(". ");
+      const res = await fetch("/api/content-dashboard/sfx", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          caption: variation.caption,
+          imageConcept: imageConceptText,
+          brandName,
+          soundPrompt: variation.soundPrompt,
+        }),
+      });
+      const data = (await res.json()) as GeneratedSfx & { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Sound generation failed");
+      setSfx(data);
+    } catch (err) {
+      setSfxError(err instanceof Error ? err.message : "Sound generation failed");
+    } finally {
+      setGeneratingSfx(false);
     }
   };
 
@@ -221,6 +293,109 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
       <div className="border-t border-zinc-100 px-3.5 py-2">
         <p className="text-[12px] text-zinc-400">View all {variation.comments} comments</p>
       </div>
+
+      {/* Voice-over + sound section */}
+      {voices && voices.length > 0 && (
+        <div className="border-t border-zinc-100 px-3.5 py-2.5">
+          {/* Voice-over */}
+          {audio ? (
+            <div className="flex items-center gap-2">
+              <audio
+                controls
+                src={audio.url}
+                className="h-8 flex-1"
+                preload="none"
+                onPlay={(e) => exclusivePlay(e.currentTarget)}
+              />
+              <button
+                type="button"
+                className="rounded-full border border-zinc-200 px-2.5 py-1 text-[10px] text-zinc-500 transition hover:bg-zinc-100"
+                onClick={() => { setAudio(null); generateAudio(); }}
+                disabled={generatingAudio}
+                aria-label="Regenerate voice"
+              >
+                🔄
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <select
+                className="flex-1 rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-[11px] dark:border-zinc-700 dark:bg-zinc-800"
+                value={voiceId}
+                onChange={(e) => setVoiceId(e.target.value)}
+                aria-label="Select voice"
+              >
+                <option value="">🎤 Select voice</option>
+                {voices.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.kind === "cloned" ? "🎙️ " : "🎤 "}{v.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-rose-500 to-orange-500 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+                disabled={generatingAudio}
+                onClick={generateAudio}
+              >
+                {generatingAudio ? (
+                  <>
+                    <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" opacity="0.25"/><path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" stroke="currentColor" strokeWidth="3" fill="none"/></svg>
+                    ...
+                  </>
+                ) : (
+                  <>🎙️ Voice-over</>
+                )}
+              </button>
+            </div>
+          )}
+          {audioError && <p className="mt-1 text-[10px] text-red-500">{audioError}</p>}
+
+          {/* Sound effects */}
+          <div className="mt-2">
+            {sfx ? (
+              <div className="flex items-center gap-2">
+                <audio
+                  controls
+                  src={sfx.audio.url}
+                  className="h-8 flex-1"
+                  preload="none"
+                  onPlay={(e) => exclusivePlay(e.currentTarget)}
+                />
+                <button
+                  type="button"
+                  className="rounded-full border border-zinc-200 px-2.5 py-1 text-[10px] text-zinc-500 transition hover:bg-zinc-100"
+                  onClick={() => { setSfx(null); generateSfx(); }}
+                  disabled={generatingSfx}
+                  aria-label="Regenerate sound"
+                >
+                  🔄
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-zinc-600 transition hover:border-purple-300 hover:text-purple-600 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                disabled={generatingSfx}
+                onClick={generateSfx}
+              >
+                {generatingSfx ? (
+                  <>
+                    <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" opacity="0.25"/><path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" stroke="currentColor" strokeWidth="3" fill="none"/></svg>
+                    Generating sound...
+                  </>
+                ) : (
+                  <>🎵 Generate Sound</>
+                )}
+              </button>
+            )}
+            {sfx?.soundPrompt && (
+              <p className="mt-1 text-[9px] italic text-zinc-400">{sfx.soundPrompt}</p>
+            )}
+            {sfxError && <p className="mt-1 text-[10px] text-red-500">{sfxError}</p>}
+          </div>
+        </div>
+      )}
 
       {/* Select overlay */}
       <button
