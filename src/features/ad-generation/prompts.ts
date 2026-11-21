@@ -1,0 +1,53 @@
+import type { BrandBrainContent } from "@/features/brand-brain/types";
+import { META_AD_LIMITS, type AdPlatform } from "./types";
+
+export interface AdVariantGenerationInput {
+  platform: AdPlatform;
+  objective: string;
+  format: string;
+  angle: string;
+  brandContent?: BrandBrainContent | null;
+}
+
+function formatBrandContext(brandContent: BrandBrainContent | null | undefined): string {
+  if (!brandContent) {
+    return "No brand profile attached. Use general best practices for the platform.";
+  }
+  const lines: string[] = [];
+  if (brandContent.business) lines.push(`Business: ${brandContent.business}`);
+  if (brandContent.industry) lines.push(`Industry: ${brandContent.industry}`);
+  if (brandContent.usp) lines.push(`Unique selling proposition: ${brandContent.usp}`);
+  if (brandContent.tone) lines.push(`Tone of voice: ${brandContent.tone}`);
+  if (brandContent.audiencePains.length) lines.push(`Audience pains: ${brandContent.audiencePains.join(", ")}`);
+  if (brandContent.audienceDesires.length) lines.push(`Audience desires: ${brandContent.audienceDesires.join(", ")}`);
+  if (brandContent.benefits.length) lines.push(`Benefits to highlight: ${brandContent.benefits.join(", ")}`);
+  if (brandContent.wordsToUse.length) lines.push(`Words to use: ${brandContent.wordsToUse.join(", ")}`);
+  if (brandContent.wordsToAvoid.length) lines.push(`Words to avoid: ${brandContent.wordsToAvoid.join(", ")}`);
+  if (brandContent.competitors.length) lines.push(`Competitors to differentiate from: ${brandContent.competitors.join(", ")}`);
+  return lines.length ? lines.join("\n") : "No brand profile attached. Use general best practices for the platform.";
+}
+
+export function buildAdVariantGenerationPrompt(input: AdVariantGenerationInput): { system: string; prompt: string } {
+  const system = [
+    "You are a senior social media ads copywriter for paid social campaigns.",
+    'You reply ONLY with a single JSON object with exactly these string keys: "primaryText", "headline", "description", "cta".',
+    "No markdown, no commentary, no code fences.",
+    `Keep primaryText at most ${META_AD_LIMITS.primaryText} characters and headline at most ${META_AD_LIMITS.headline} characters.`,
+    `Keep description at most ${META_AD_LIMITS.description} characters.`,
+    "Make the copy concrete, benefit-driven, and aligned with the requested angle.",
+  ].join(" ");
+
+  const prompt = [
+    `Platform: ${input.platform}`,
+    `Campaign objective: ${input.objective}`,
+    `Ad format: ${input.format}`,
+    `Creative angle: ${input.angle}`,
+    "",
+    "Brand context:",
+    formatBrandContext(input.brandContent),
+    "",
+    `Write one ad variant for this platform and angle. Return JSON with keys: primaryText, headline, description, cta.`,
+  ].join("\n");
+
+  return { system, prompt };
+}
