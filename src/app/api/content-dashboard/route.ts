@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { removeReelDir } from "@/features/reel/assets";
 import { listContentItems, createContentItem, getContentStats, updateContentItem, updateContentItemStatus, deleteContentItem } from "@/features/content-dashboard/store";
 import { CONTENT_STATUSES, CONTENT_TYPES } from "@/features/content-dashboard/types";
 
@@ -126,5 +127,7 @@ export async function DELETE(request: Request) {
   if (!deleted) {
     return NextResponse.json({ error: "Content not found" }, { status: 404 });
   }
+  // Lifecycle: reel assets live until the post is deleted — this is the cleanup trigger.
+  await removeReelDir(parsed.data.id).catch(() => {});
   return NextResponse.json({ deleted: true });
 }

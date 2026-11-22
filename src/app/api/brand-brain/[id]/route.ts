@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getBrandBrain } from "@/features/brand-brain/store";
 import { deleteBrandBrainDir } from "@/features/brand-brain/file-storage";
 import { deleteContentItemsByBrainId } from "@/features/content-dashboard/store";
+import { removeReelDir } from "@/features/reel/assets";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -36,6 +37,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const removed = await deleteContentItemsByBrainId(id, {
     includeApproved: parsed.data.includeApproved ?? false,
   });
+  // Lifecycle: deleted posts take their reel assets with them.
+  await Promise.all(removed.removedIds.map((itemId) => removeReelDir(itemId).catch(() => {})));
   const brandDeleted = await deleteBrandBrainDir(id);
 
   return NextResponse.json({

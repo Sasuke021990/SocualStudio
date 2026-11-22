@@ -18,6 +18,10 @@ export interface ReelToolStep {
   args: Record<string, unknown>;
   /** Id queries the executor must run BEFORE this step (substitutes placeholders). */
   resolve?: Array<"tracks" | "clips" | "media">;
+  /** For `import` steps: logical names matching the imported paths order. */
+  mediaNames?: string[];
+  /** For `add_clip` steps: logical name of the placed media (clip id key). */
+  clipName?: string;
 }
 
 const VIDEO_TRACK = "__videoTrack__";
@@ -59,6 +63,7 @@ export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { proj
       paths: [...assets.imagePaths, assets.voicePath, assets.musicPath],
     },
     resolve: ["media"],
+    mediaNames: [...assets.imagePaths.map((_, i) => `img${i}`), "voice", "music"],
   });
 
   steps.push({ label: "Video track", tool: "add_track", args: { trackType: "video", position: 0 } });
@@ -71,11 +76,12 @@ export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { proj
       label: `Image ${i + 1}/${N}`,
       tool: "add_clip",
       args: { trackId: VIDEO_TRACK, mediaId: mediaToken(`img${i}`), startTime: +(i * slice).toFixed(3) },
+      clipName: `img${i}`,
       ...(i === 0 ? { resolve: ["tracks"] as const } : {}),
     });
   }
-  steps.push({ label: "Voice-over", tool: "add_clip", args: { trackId: AUDIO_TRACK_1, mediaId: mediaToken("voice"), startTime: 0 } });
-  steps.push({ label: "Background music", tool: "add_clip", args: { trackId: AUDIO_TRACK_2, mediaId: mediaToken("music"), startTime: 0 } });
+  steps.push({ label: "Voice-over", tool: "add_clip", args: { trackId: AUDIO_TRACK_1, mediaId: mediaToken("voice"), startTime: 0 }, clipName: "voice" });
+  steps.push({ label: "Background music", tool: "add_clip", args: { trackId: AUDIO_TRACK_2, mediaId: mediaToken("music"), startTime: 0 }, clipName: "music" });
 
   steps.push({ label: "Resolve clips", tool: "noop", args: {}, resolve: ["clips"] });
 

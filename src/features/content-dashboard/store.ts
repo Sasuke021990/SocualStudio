@@ -121,7 +121,7 @@ export async function deleteContentItem(id: string): Promise<boolean> {
 export async function deleteContentItemsByBrainId(
   brainId: string,
   opts?: { includeApproved?: boolean },
-): Promise<{ deletedDrafts: number; deletedApproved: number }> {
+): Promise<{ deletedDrafts: number; deletedApproved: number; removedIds: string[] }> {
   const all = await ensureItems();
   const keep = all.filter((i) => {
     if (i.brainId !== brainId) return true;
@@ -132,7 +132,7 @@ export async function deleteContentItemsByBrainId(
   const deletedDrafts = removed.filter((i) => i.status !== "approved").length;
   const deletedApproved = removed.filter((i) => i.status === "approved").length;
   if (removed.length > 0) await persist(keep);
-  return { deletedDrafts, deletedApproved };
+  return { deletedDrafts, deletedApproved, removedIds: removed.map((i) => i.id) };
 }
 
 export async function getContentStats(filter?: { brainId?: string; brandName?: string }): Promise<{
