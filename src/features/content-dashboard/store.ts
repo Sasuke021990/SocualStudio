@@ -117,6 +117,24 @@ export async function deleteContentItem(id: string): Promise<boolean> {
   return true;
 }
 
+/** Removes a brand's content items. Approved posts are kept unless includeApproved is true. */
+export async function deleteContentItemsByBrainId(
+  brainId: string,
+  opts?: { includeApproved?: boolean },
+): Promise<{ deletedDrafts: number; deletedApproved: number }> {
+  const all = await ensureItems();
+  const keep = all.filter((i) => {
+    if (i.brainId !== brainId) return true;
+    if (i.status === "approved" && !opts?.includeApproved) return true;
+    return false;
+  });
+  const removed = all.filter((i) => !keep.includes(i));
+  const deletedDrafts = removed.filter((i) => i.status !== "approved").length;
+  const deletedApproved = removed.filter((i) => i.status === "approved").length;
+  if (removed.length > 0) await persist(keep);
+  return { deletedDrafts, deletedApproved };
+}
+
 export async function getContentStats(filter?: { brainId?: string; brandName?: string }): Promise<{
   total: number;
   draft: number;

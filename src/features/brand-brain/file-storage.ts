@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, writeFile, stat } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, writeFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 
 const BRANDS_DIR = join(process.cwd(), "data", "brands");
@@ -109,6 +109,18 @@ export async function listAllProjects(): Promise<ProjectEntry[]> {
     // data/brands doesn't exist yet — return empty
   }
   return projects.sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt));
+}
+
+/** Removes the brand folder (all .md profiles) for a brainId. */
+export async function deleteBrandBrainDir(brainId: string): Promise<boolean> {
+  const dir = brandDir(brainId);
+  try {
+    await stat(dir);
+  } catch {
+    return false;
+  }
+  await rm(dir, { recursive: true, force: true });
+  return true;
 }
 
 export async function brandBrainFileExists(

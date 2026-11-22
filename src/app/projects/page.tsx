@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { PageChrome } from "@/components/nav";
+import { DeleteBrandDialog } from "@/components/DeleteBrandDialog";
 
 interface ProjectEntry {
   brainId: string;
@@ -25,6 +26,17 @@ export default function ProjectsPage() {
     setLoaded(true);
   }, []);
 
+  const deleteBrand = (brainId: string) => async () => {
+    const res = await fetch(`/api/brand-brain/${encodeURIComponent(brainId)}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ includeApproved: false }),
+    });
+    const data = await res.json() as { error?: string };
+    if (!res.ok) throw new Error(data.error ?? "Delete failed");
+    setProjects((prev) => prev.filter((p) => p.brainId !== brainId));
+  };
+
   useEffect(() => {
     if (!loaded) {
       const t = setTimeout(() => load(), 0);
@@ -39,19 +51,23 @@ export default function ProjectsPage() {
       <PageChrome back={{ href: "/", label: "Landing" }} />
 
       <section className="relative mx-auto max-w-6xl px-8 pb-24 pt-12">
-        <div className="flex items-end justify-between">
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="anim-rise text-4xl font-bold tracking-tight" style={{ color: "#fff" }}>Your Brands</h1>
             <p className="anim-rise anim-rise-1 mt-2" style={{ color: "var(--muted)" }}>
-              Select a brand to open its studio, or create a new one.
+              Select a brand to open its workspace, or create a new one.
             </p>
           </div>
-          <Link href="/projects/new" className="btn-primary anim-rise anim-rise-2">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
-              <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-            </svg>
-            New Brand
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard" className="btn-ghost anim-rise anim-rise-2">Dashboard</Link>
+            <Link href="/approved" className="btn-ghost anim-rise anim-rise-2">Approved</Link>
+            <Link href="/projects/new" className="btn-primary anim-rise anim-rise-2">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+                <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+              New Brand
+            </Link>
+          </div>
         </div>
 
         {!loaded ? (
@@ -86,30 +102,45 @@ export default function ProjectsPage() {
         ) : (
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {projects.map((p, i) => (
-              <Link
-                key={`${p.brainId}-${p.fileName}`}
-                href={`/studio/${p.brainId}`}
-                className={`glass card-hover anim-rise anim-rise-${(i % 4) + 1} flex items-center gap-4 p-5`}
-              >
-                <div
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-lg font-bold text-white"
-                  style={{
-                    background: "linear-gradient(120deg, var(--accent), #a855f7)",
-                    boxShadow: "0 4px 18px -4px var(--accent-glow)",
-                  }}
-                >
-                  {p.heading.charAt(0).toUpperCase()}
-                </div>
-                <div className="min-w-0">
-                  <div className="truncate font-semibold" style={{ color: "#fff" }}>{p.heading}</div>
-                  <div className="mt-0.5 text-xs" style={{ color: "var(--muted)" }}>
-                    {new Date(p.modifiedAt).toLocaleDateString()}
+              <div key={`${p.brainId}-${p.fileName}`} className={`glass card-hover anim-rise anim-rise-${(i % 4) + 1} flex items-center gap-4 p-5`}>
+                <Link href={`/brand/${p.brainId}`} className="flex min-w-0 flex-1 cursor-pointer items-center gap-4">
+                  <div
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-lg font-bold text-white"
+                    style={{
+                      background: "linear-gradient(120deg, var(--accent), #a855f7)",
+                      boxShadow: "0 4px 18px -4px var(--accent-glow)",
+                    }}
+                  >
+                    {p.heading.charAt(0).toUpperCase()}
                   </div>
+                  <div className="min-w-0">
+                    <div className="truncate font-semibold" style={{ color: "#fff" }}>{p.heading}</div>
+                    <div className="mt-0.5 text-xs" style={{ color: "var(--muted)" }}>
+                      {new Date(p.modifiedAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <svg className="ml-auto shrink-0" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--accent-bright)" strokeWidth="1.8" aria-hidden>
+                    <path d="M6 3l5 5-5 5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </Link>
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  <Link
+                    href={`/studio/${p.brainId}`}
+                    className="text-xs transition-colors duration-200 hover:underline"
+                    style={{ color: "var(--accent-bright)" }}
+                  >
+                    Studio
+                  </Link>
+                  <DeleteBrandDialog
+                    brandName={p.heading}
+                    triggerLabel="Delete"
+                    triggerClassName="cursor-pointer text-xs transition-colors duration-200 hover:underline"
+                    confirmLabel="Delete Brand"
+                    description="This removes the brand profile and all its draft posts. Approved posts are kept and stay visible on the Approved page until you remove them manually."
+                    onConfirm={deleteBrand(p.brainId)}
+                  />
                 </div>
-                <svg className="ml-auto shrink-0" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--accent-bright)" strokeWidth="1.8" aria-hidden>
-                  <path d="M6 3l5 5-5 5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </Link>
+              </div>
             ))}
           </div>
         )}

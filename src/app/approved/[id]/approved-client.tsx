@@ -69,7 +69,7 @@ export default function ApprovedClient() {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-4">
         <p className="text-zinc-500">No approved posts.</p>
-        <Link href="/?step=generate" className="btn-primary">Back to Dashboard</Link>
+        <Link href="/approved" className="btn-primary">Back to Approved</Link>
       </main>
     );
   }
@@ -84,10 +84,10 @@ export default function ApprovedClient() {
       {/* Back nav */}
       <div className="mx-auto flex max-w-5xl items-center justify-between px-6 pt-8">
         <Link
-          href="/?step=generate"
+          href="/approved"
           className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white/60 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:border-violet-300 hover:text-violet-600 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-300"
         >
-          ← Back to Dashboard
+          ← Back to Approved
         </Link>
         <div className="flex flex-col items-end gap-1">
           <div className="flex items-center gap-2">

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { listContentItems, createContentItem, getContentStats, updateContentItem, updateContentItemStatus } from "@/features/content-dashboard/store";
+import { listContentItems, createContentItem, getContentStats, updateContentItem, updateContentItemStatus, deleteContentItem } from "@/features/content-dashboard/store";
 import { CONTENT_STATUSES, CONTENT_TYPES } from "@/features/content-dashboard/types";
 
 const createSchema = z.object({
@@ -104,4 +104,27 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Content not found" }, { status: 404 });
   }
   return NextResponse.json({ item });
+}
+
+const deleteSchema = z.object({ id: z.string().min(1) });
+
+export async function DELETE(request: Request) {
+  const raw = await request.text();
+  let body: unknown = null;
+  try {
+    body = raw ? JSON.parse(raw) : null;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const parsed = deleteSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  }
+
+  const deleted = await deleteContentItem(parsed.data.id);
+  if (!deleted) {
+    return NextResponse.json({ error: "Content not found" }, { status: 404 });
+  }
+  return NextResponse.json({ deleted: true });
 }

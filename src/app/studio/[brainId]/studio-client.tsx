@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { PageChrome } from "@/components/nav";
+import { DeleteBrandDialog } from "@/components/DeleteBrandDialog";
 import { CONTENT_TEMPLATES } from "@/features/content-dashboard/types";
 
 const TIPS = [
@@ -30,6 +31,7 @@ function TemplateIcon({ id, emoji }: { id: string; emoji: string }) {
 
 export default function StudioClient() {
   const params = useParams<{ brainId: string }>();
+  const router = useRouter();
   const brainId = params.brainId;
   const [brandName, setBrandName] = useState("");
 
@@ -53,12 +55,42 @@ export default function StudioClient() {
       <PageChrome back={{ href: "/projects", label: "Projects" }} brand={brandName} />
 
       <section className="relative mx-auto max-w-6xl px-8 pb-24 pt-12">
-        <h1 className="anim-rise text-4xl font-bold tracking-tight" style={{ color: "#fff" }}>
-          Create New Content
-        </h1>
-        <p className="anim-rise anim-rise-1 mt-2" style={{ color: "var(--muted)" }}>
-          Pick a template to generate platform-optimized content{brandName ? ` for ${brandName}` : ""}.
-        </p>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="anim-rise text-4xl font-bold tracking-tight" style={{ color: "#fff" }}>
+              Create New Content
+            </h1>
+            <p className="anim-rise anim-rise-1 mt-2" style={{ color: "var(--muted)" }}>
+              Pick a template to generate platform-optimized content{brandName ? ` for ${brandName}` : ""}.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link href={`/brand/${brainId}`} className="btn-ghost anim-rise anim-rise-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+                <rect x="3" y="3" width="18" height="18" rx="3" />
+                <path d="M21 15l-5-5L5 21" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Brand Workspace
+            </Link>
+            <DeleteBrandDialog
+              brandName={brandName || "this brand"}
+              triggerLabel="Delete Brand"
+              triggerClassName="btn-ghost cursor-pointer transition-colors duration-200"
+              confirmLabel="Delete Brand"
+              description="This removes the brand profile and all its draft posts. Approved posts are kept and stay visible on the Approved page until you remove them manually."
+              onConfirm={async () => {
+                const res = await fetch(`/api/brand-brain/${encodeURIComponent(brainId)}`, {
+                  method: "DELETE",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ includeApproved: false }),
+                });
+                const data = await res.json() as { error?: string };
+                if (!res.ok) throw new Error(data.error ?? "Delete failed");
+                router.push("/dashboard");
+              }}
+            />
+          </div>
+        </div>
 
         {/* Template grid */}
         <div className="mt-10 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-5">
