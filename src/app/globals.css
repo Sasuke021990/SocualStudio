@@ -172,13 +172,14 @@ a, button, [role="button"], summary, label[for], select {
   font-weight: 600;
   font-size: 0.925rem;
   color: #fff;
-  background: var(--accent);
+  /* #4f46e5 keeps white label at ≥ 4.5:1 contrast (WCAG 2.2 SC 1.4.3) */
+  background: #4f46e5;
   box-shadow: 0 4px 20px -4px var(--accent-glow);
   transition: transform 0.15s ease-out, background 0.15s ease-out, box-shadow 0.15s ease-out;
 }
 
 .btn-primary:hover {
-  background: var(--accent-bright);
+  background: #4338ca;
   transform: translateY(-1px);
   box-shadow: 0 8px 28px -4px var(--accent-glow);
 }

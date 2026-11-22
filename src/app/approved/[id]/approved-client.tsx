@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { ContentItem } from "@/features/content-dashboard/types";
 import { BackPill } from "@/components/nav";
+import { IconImage } from "@/components/icons";
 import { exclusivePlay } from "@/features/voice/audio-coordinator";
 
 export default function ApprovedClient() {
@@ -164,7 +165,7 @@ export default function ApprovedClient() {
                 <img src={v.generatedImage} alt={current.title} className="absolute inset-0 h-full w-full object-cover" />
               ) : (
                 <div className="relative z-10 px-6 text-center text-white">
-                  <div className="text-4xl">📸</div>
+                  <IconImage size={40} className="text-white/90" />
                   <p className="mt-2 text-xs opacity-80">{current.title}</p>
                 </div>
               )}

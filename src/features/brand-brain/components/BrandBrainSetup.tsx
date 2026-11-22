@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { IconFile, IconGlobe, IconPaperclip, IconPencil, IconSpark } from "@/components/icons";
 
 interface BrandExtraction {
   brandName: string;
@@ -246,8 +247,8 @@ export function BrandBrainSetup({ brainId, onSaved }: { brainId: string; onSaved
         <div className="flex flex-col items-center gap-6 py-8">
           <div className="relative h-24 w-24">
             <div className="absolute inset-0 animate-ping rounded-full bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20" />
-            <div className="absolute inset-2 flex items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-4xl shadow-lg shadow-violet-500/30">
-              🧠
+            <div className="absolute inset-2 flex items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/30">
+              <IconSpark size={36} />
             </div>
           </div>
           <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">Extracting Brand Intelligence</h2>
@@ -271,8 +272,9 @@ export function BrandBrainSetup({ brainId, onSaved }: { brainId: string; onSaved
               AI extracted the following details. Review and edit anything before saving.
             </p>
           </div>
-          <span className="chip" style={{ borderColor: "#8b5cf6", color: "#8b5cf6" }}>
-            ✏️ Editing
+          <span className="chip flex items-center gap-1" style={{ borderColor: "#8b5cf6", color: "#8b5cf6" }}>
+            <IconPencil size={13} />
+            Editing
           </span>
         </div>
 
@@ -318,7 +320,7 @@ export function BrandBrainSetup({ brainId, onSaved }: { brainId: string; onSaved
                 Saving...
               </>
             ) : (
-              "💾 Save Brand & Continue →"
+              "Save Brand & Continue →"
             )}
           </button>
           <button
@@ -349,14 +351,30 @@ export function BrandBrainSetup({ brainId, onSaved }: { brainId: string; onSaved
           <button
             key={t}
             type="button"
+            aria-pressed={sourceType === t}
             onClick={() => { setSourceType(t); setSourceValue(""); setFileName(null); }}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all ${
+            className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-all ${
               sourceType === t
                 ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-md shadow-violet-500/20"
                 : "border border-zinc-200 text-zinc-600 hover:border-violet-300 hover:text-violet-600 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-fuchsia-400"
             }`}
           >
-            {t === "url" ? "🌐 Website URL" : t === "text" ? "✏️ Paste Text" : "📄 Upload File"}
+            {t === "url" ? (
+              <>
+                <IconGlobe size={15} />
+                Website URL
+              </>
+            ) : t === "text" ? (
+              <>
+                <IconPencil size={15} />
+                Paste Text
+              </>
+            ) : (
+              <>
+                <IconFile size={15} />
+                Upload File
+              </>
+            )}
           </button>
         ))}
       </div>
@@ -401,7 +419,7 @@ export function BrandBrainSetup({ brainId, onSaved }: { brainId: string; onSaved
                 <path d="M20 16.7V19a2 2 0 01-2 2H6a2 2 0 01-2-2v-2.3" strokeLinecap="round" />
               </svg>
               {fileName ? (
-                <span className="font-medium text-violet-600">📎 {fileName}</span>
+                <span className="inline-flex items-center gap-1 font-medium text-violet-600"><IconPaperclip size={13} />{fileName}</span>
               ) : (
                 <span>Click to upload a document (TXT, MD, DOCX, PDF)</span>
               )}

@@ -72,7 +72,7 @@ export default function DashboardPage() {
       <section className="relative mx-auto max-w-6xl px-8 pb-24 pt-12">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="anim-rise text-4xl font-bold tracking-tight" style={{ color: "#fff" }}>Command Dashboard</h1>
+            <h1 className="anim-rise text-4xl font-bold tracking-tight" style={{ color: "#fff" }}>Dashboard</h1>
             <p className="anim-rise anim-rise-1 mt-2" style={{ color: "var(--muted)" }}>
               Every brand at a glance — approved posts ready to publish, and quick access to each brand.
             </p>

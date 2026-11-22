@@ -1,5 +1,8 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import ApprovedClient from "./approved-client";
+
+export const metadata: Metadata = { title: "Approved Post" };
 
 export default function ApprovedPage() {
   return (

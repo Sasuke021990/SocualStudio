@@ -1,5 +1,8 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import BrandClient from "./brand-client";
+
+export const metadata: Metadata = { title: "Brand" };
 
 export default function BrandPage() {
   return (

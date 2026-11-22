@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { IconCheck, IconPalette, IconPaperclip, IconX } from "@/components/icons";
 
 interface ComfyUIConnection {
   id: string;
@@ -34,6 +35,7 @@ export function ComfyUISetup() {
   const [formWorkflowJson, setFormWorkflowJson] = useState<Record<string, unknown> | null>(null);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState("");
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -146,6 +148,7 @@ export function ComfyUISetup() {
   const saveConnection = async () => {
     setSaving(true);
     setError(null);
+    setSaveMsg("");
     try {
       const res = await fetch("/api/comfyui", {
         method: "POST",
@@ -161,6 +164,8 @@ export function ComfyUISetup() {
       const data = (await res.json()) as { connection?: ComfyUIConnection; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Save failed");
       setShowForm(false);
+      setSaveMsg("Connection saved.");
+      setTimeout(() => setSaveMsg(""), 2500);
       loadState();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
@@ -195,8 +200,8 @@ export function ComfyUISetup() {
   return (
     <section className="glass-card p-6">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 text-xl shadow-lg">
-          🎨
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 text-white shadow-lg">
+          <IconPalette size={20} />
         </div>
         <div>
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">ComfyUI Image Generation</h2>
@@ -209,13 +214,16 @@ export function ComfyUISetup() {
         </button>
       </div>
 
-      {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">{error}</p>}
+      <p role="status" aria-live="polite" className="mt-3 text-sm text-emerald-600 dark:text-emerald-400">
+        {saveMsg}
+      </p>
 
       {/* Connection list */}
       {connections.length === 0 && !showForm ? (
         <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-zinc-200 py-10 text-center dark:border-zinc-700">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-teal-100 to-cyan-100 dark:from-teal-950 dark:to-cyan-950">
-            <span className="text-2xl">🎨</span>
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-teal-100 to-cyan-100 text-teal-600 dark:from-teal-950 dark:to-cyan-950 dark:text-cyan-400">
+            <IconPalette size={24} />
           </div>
           <p className="text-sm text-zinc-500">No ComfyUI connections yet. Add one to start generating images.</p>
           <button type="button" className="btn-primary !py-2 !px-4 !text-sm" onClick={openNewForm}>
@@ -329,7 +337,10 @@ export function ComfyUISetup() {
               className="mt-1.5 flex w-full items-center gap-2 rounded-lg border-2 border-dashed border-zinc-300 px-4 py-2.5 text-xs text-zinc-500 transition hover:border-teal-400 hover:text-teal-600 dark:border-zinc-700"
             >
               {formWorkflowName ? (
-                <span className="font-medium text-teal-600 dark:text-cyan-400">📎 {formWorkflowName} — click to replace</span>
+                <span className="inline-flex items-center gap-1 font-medium text-teal-600 dark:text-cyan-400">
+                  <IconPaperclip size={13} />
+                  {formWorkflowName} — click to replace
+                </span>
               ) : (
                 <span>Upload API.json workflow file</span>
               )}
@@ -344,7 +355,10 @@ export function ComfyUISetup() {
           {/* Test result */}
           {testResult && (
             <div className={`mt-3 rounded-lg border p-2.5 text-xs ${testResult.ok ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300" : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300"}`}>
-              {testResult.ok ? "✅ " : "❌ "}{testResult.message}
+              <span className="inline-flex items-center gap-1">
+                {testResult.ok ? <IconCheck size={13} /> : <IconX size={13} />}
+                {testResult.message}
+              </span>
             </div>
           )}
 
@@ -356,7 +370,7 @@ export function ComfyUISetup() {
               disabled={saving || !formName.trim() || !formUrl.trim()}
               onClick={saveConnection}
             >
-              {saving ? "Saving..." : editingId ? "Save Changes" : "💾 Save Connection"}
+              {saving ? "Saving..." : editingId ? "Save Changes" : "Save Connection"}
             </button>
             <button
               type="button"

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { exclusivePlay } from "../audio-coordinator";
+import { IconMic, IconPlay } from "@/components/icons";
 
 interface VoiceProfile {
   id: string;
@@ -26,6 +27,7 @@ export function VoiceSetup() {
   const [uploading, setUploading] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cloneMsg, setCloneMsg] = useState("");
   const [loaded, setLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -52,6 +54,7 @@ export function VoiceSetup() {
     if (!file) return;
     setUploading(true);
     setError(null);
+    setCloneMsg("");
     try {
       const form = new FormData();
       form.append("file", file);
@@ -60,6 +63,8 @@ export function VoiceSetup() {
       const data = await res.json() as { error?: string };
       if (!res.ok) throw new Error(data.error ?? "Upload failed");
       setVoiceName("");
+      setCloneMsg("Voice cloned — ready for your posts.");
+      setTimeout(() => setCloneMsg(""), 3000);
       loadVoices();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
@@ -107,8 +112,8 @@ export function VoiceSetup() {
   return (
     <section className="glass-card p-6">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-orange-500 text-xl shadow-lg">
-          🎙️
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-orange-500 text-white shadow-lg">
+          <IconMic size={20} />
         </div>
         <div>
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Voice Setup</h2>
@@ -128,7 +133,10 @@ export function VoiceSetup() {
         )}
       </div>
 
-      {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">{error}</p>}
+      <p role="status" aria-live="polite" className="mt-3 text-sm text-emerald-600 dark:text-emerald-400">
+        {uploading ? "Cloning voice..." : cloneMsg}
+      </p>
 
       {/* Clone your voice */}
       <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50/30 p-4 dark:border-rose-800 dark:bg-rose-950/20">
@@ -157,7 +165,14 @@ export function VoiceSetup() {
             disabled={uploading}
             onClick={() => fileInputRef.current?.click()}
           >
-            {uploading ? "Cloning..." : "🎙️ Upload & Clone Voice"}
+            {uploading ? (
+              "Cloning..."
+            ) : (
+              <span className="inline-flex items-center gap-1.5">
+                <IconMic size={15} />
+                Upload &amp; Clone Voice
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -169,8 +184,8 @@ export function VoiceSetup() {
           <div className="mt-2 space-y-2">
             {cloned.map((v) => (
               <div key={v.id} className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white/60 p-3 dark:border-zinc-700 dark:bg-zinc-900/60">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-orange-500 text-sm font-bold text-white">
-                  🎙️
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-orange-500 text-white">
+                  <IconMic size={16} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium text-zinc-900 dark:text-zinc-50">{v.name}</div>
@@ -182,7 +197,14 @@ export function VoiceSetup() {
                   disabled={testing === v.id}
                   onClick={() => testVoice(v.id, v.name)}
                 >
-                  {testing === v.id ? "Playing..." : "▶ Test"}
+                  {testing === v.id ? (
+                    "Playing..."
+                  ) : (
+                    <span className="inline-flex items-center gap-1">
+                      <IconPlay size={11} />
+                      Test
+                    </span>
+                  )}
                 </button>
                 <button
                   type="button"
@@ -203,8 +225,8 @@ export function VoiceSetup() {
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           {presets.map((v) => (
             <div key={v.id} className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white/60 p-3 dark:border-zinc-700 dark:bg-zinc-900/60">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-sm font-bold text-white">
-                🎤
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white">
+                <IconMic size={16} />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium text-zinc-900 dark:text-zinc-50">{v.name}</div>
@@ -216,7 +238,14 @@ export function VoiceSetup() {
                 disabled={testing === v.id}
                 onClick={() => testVoice(v.id, v.name)}
               >
-                {testing === v.id ? "Playing..." : "▶ Test"}
+                {testing === v.id ? (
+                  "Playing..."
+                ) : (
+                  <span className="inline-flex items-center gap-1">
+                    <IconPlay size={11} />
+                    Test
+                  </span>
+                )}
               </button>
             </div>
           ))}

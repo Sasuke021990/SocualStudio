@@ -13,7 +13,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Social Studio",
+  title: {
+    default: "Social Studio",
+    template: "%s · Social Studio",
+  },
   description: "AI-powered social media content studio — local & private.",
 };
 

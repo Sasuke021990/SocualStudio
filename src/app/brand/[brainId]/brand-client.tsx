@@ -125,7 +125,7 @@ export default function BrandClient() {
           <Link href={`/studio/${brainId}`} className="btn-ghost ml-auto">Create content</Link>
         </div>
 
-        {/* Approved Insta Posts */}
+        {/* Approved Instagram Posts */}
         <div className="glass anim-rise mt-8 p-6">
           <div className="flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-base font-semibold" style={{ color: "#fff" }}>
@@ -135,7 +135,7 @@ export default function BrandClient() {
               >
                 ✓
               </span>
-              Approved Insta Posts
+              Approved Instagram Posts
             </h2>
             {approved.length > 0 && (
               <Link href="/approved" className="text-xs transition-colors duration-200 hover:underline" style={{ color: "var(--accent-bright)" }}>

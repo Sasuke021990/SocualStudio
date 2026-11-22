@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { PageChrome } from "@/components/nav";
 import { DeleteBrandDialog } from "@/components/DeleteBrandDialog";
 import { DraftCard, EmptyState } from "@/components/content-widgets";
+import { TemplateIcon } from "@/components/icons";
 import { CONTENT_TEMPLATES } from "@/features/content-dashboard/types";
 import type { ContentItem } from "@/features/content-dashboard/types";
 
@@ -14,22 +15,6 @@ const TIPS = [
   "Pick a goal first: 25 goal types from Launch to Meme. Custom lets you describe exactly what you want.",
   "Generated images come from your own ComfyUI workflows — set them up in Settings → Image Generation.",
 ];
-
-function TemplateIcon({ id, emoji }: { id: string; emoji: string }) {
-  const [failed, setFailed] = useState(false);
-  if (failed) {
-    return <span className="text-3xl">{emoji}</span>;
-  }
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={`/templates/${id}.png?v=2`}
-      alt=""
-      className="h-full w-full object-cover"
-      onError={() => setFailed(true)}
-    />
-  );
-}
 
 export default function StudioClient() {
   const params = useParams<{ brainId: string }>();
@@ -127,7 +112,7 @@ export default function StudioClient() {
                   border: "1px solid rgba(99,102,241,0.30)",
                 }}
               >
-                <TemplateIcon id={tpl.id} emoji={tpl.icon} />
+                <TemplateIcon id={tpl.id} />
               </div>
               <div>
                 <div className="text-sm font-semibold" style={{ color: "#fff" }}>{tpl.label}</div>
@@ -138,10 +123,10 @@ export default function StudioClient() {
           ))}
         </div>
 
-        {/* Draft Insta Posts */}
+        {/* Draft Instagram Posts */}
         <div className="glass anim-rise mt-10 p-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold" style={{ color: "#fff" }}>Draft Insta Posts</h2>
+            <h2 className="text-base font-semibold" style={{ color: "#fff" }}>Draft Instagram Posts</h2>
             <span className="text-xs" style={{ color: "var(--muted)" }}>{drafts.length} in progress</span>
           </div>
           {!itemsLoaded ? (
@@ -169,7 +154,7 @@ export default function StudioClient() {
 
         {/* Tips strip */}
         <div className="glass anim-rise mt-10 p-6">
-          <h3 className="text-sm font-semibold uppercase tracking-widest" style={{ color: "var(--accent-bright)" }}>
+          <h3 className="text-base font-semibold" style={{ color: "#fff" }}>
             How it works
           </h3>
           <ul className="mt-4 space-y-3">

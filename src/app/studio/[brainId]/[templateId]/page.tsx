@@ -1,5 +1,8 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import TemplateClient from "./template-client";
+
+export const metadata: Metadata = { title: "Create Content" };
 
 export default function TemplatePage() {
   return (

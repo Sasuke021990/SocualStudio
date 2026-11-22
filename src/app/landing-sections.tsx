@@ -1,9 +1,13 @@
 "use client";
 
+import { CONTENT_TEMPLATES } from "@/features/content-dashboard/types";
+import { CONTENT_GOALS } from "@/features/content-dashboard/goals";
+import { VOICE_PRESETS } from "@/features/voice/types";
+
 const STATS = [
-  { value: "15", label: "Content templates" },
-  { value: "25", label: "Goal types" },
-  { value: "5+", label: "Voices incl. cloning" },
+  { value: String(CONTENT_TEMPLATES.length), label: "Content templates" },
+  { value: String(CONTENT_GOALS.length), label: "Goal types" },
+  { value: `${VOICE_PRESETS.length}+`, label: "Voices incl. cloning" },
   { value: "100%", label: "Local & private" },
 ];
 

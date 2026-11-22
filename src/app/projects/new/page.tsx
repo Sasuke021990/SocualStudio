@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PageChrome } from "@/components/nav";
+import { IconFile, IconGlobe, IconPaperclip, IconPencil } from "@/components/icons";
 
 interface BrandProfile {
   brandName: string;
@@ -135,19 +136,21 @@ export default function CreateBrandPage() {
         {view === "intake" && (
           <div className="glass-hero anim-rise anim-rise-2 mt-8 p-7">
             {/* Intake tabs */}
-            <div className="flex gap-2">
+            <div className="flex gap-2" role="group" aria-label="Brand source">
               {([
-                ["url", "🌐 Website URL"],
-                ["text", "✏️ Paste Text"],
-                ["file", "📄 Upload File"],
-              ] as Array<[SourceType, string]>).map(([t, label]) => (
+                ["url", <IconGlobe key="g" size={15} />, "Website URL"],
+                ["text", <IconPencil key="p" size={15} />, "Paste Text"],
+                ["file", <IconFile key="f" size={15} />, "Upload File"],
+              ] as Array<[SourceType, React.ReactNode, string]>).map(([t, icon, label]) => (
                 <button
                   key={t}
                   type="button"
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${sourceType === t ? "" : "btn-ghost !py-1.5"}`}
+                  aria-pressed={sourceType === t}
+                  className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition ${sourceType === t ? "" : "btn-ghost !py-1.5"}`}
                   style={sourceType === t ? { background: "var(--accent)", color: "#fff", border: "none" } : undefined}
                   onClick={() => { setSourceType(t); setSourceValue(""); setFileName(null); }}
                 >
+                  {icon}
                   {label}
                 </button>
               ))}
@@ -186,7 +189,14 @@ export default function CreateBrandPage() {
                       <path d="M12 16V4m0 0l-4 4m4-4l4 4" strokeLinecap="round" strokeLinejoin="round" />
                       <path d="M20 16.7V19a2 2 0 01-2 2H6a2 2 0 01-2-2v-2.3" strokeLinecap="round" />
                     </svg>
-                    {fileName ? <span style={{ color: "var(--accent-bright)" }}>📎 {fileName}</span> : <span>Click to upload (TXT, MD)</span>}
+                    {fileName ? (
+                      <span className="flex items-center gap-1" style={{ color: "var(--accent-bright)" }}>
+                        <IconPaperclip size={14} />
+                        {fileName}
+                      </span>
+                    ) : (
+                      <span>Click to upload (TXT, MD)</span>
+                    )}
                   </button>
                 </div>
               )}
@@ -202,7 +212,10 @@ export default function CreateBrandPage() {
           <div className="glass-hero anim-rise mt-8 p-7">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Review & Edit</h2>
-              <span className="chip" style={{ borderColor: "var(--accent)", color: "var(--accent-bright)" }}>✏️ Editing</span>
+              <span className="chip flex items-center gap-1" style={{ borderColor: "var(--accent)", color: "var(--accent-bright)" }}>
+                <IconPencil size={13} />
+                Editing
+              </span>
             </div>
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2">

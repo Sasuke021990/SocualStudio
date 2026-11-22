@@ -62,7 +62,10 @@ export function DeleteBrandDialog({
         }
       }}
     >
-      <AlertDialogTrigger className={triggerClassName ?? "btn-ghost"}>
+      <AlertDialogTrigger
+        className={triggerClassName ?? "btn-ghost"}
+        aria-label={`Delete ${brandName}`}
+      >
         {triggerLabel}
       </AlertDialogTrigger>
       <AlertDialogBackdrop style={{ background: "rgba(2,4,10,0.85)", backdropFilter: "blur(6px)" }} />

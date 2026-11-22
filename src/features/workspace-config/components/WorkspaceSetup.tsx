@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { IconFolder } from "@/components/icons";
 
 export function WorkspaceSetup() {
   const [exportPath, setExportPath] = useState("");
@@ -49,8 +50,8 @@ export function WorkspaceSetup() {
   return (
     <section className="glass-card p-6">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 text-xl shadow-lg">
-          📁
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 text-white shadow-lg">
+          <IconFolder size={20} />
         </div>
         <div>
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Workspace</h2>
@@ -60,7 +61,10 @@ export function WorkspaceSetup() {
         </div>
       </div>
 
-      {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">{error}</p>}
+      <p role="status" aria-live="polite" className="mt-3 text-sm text-emerald-600 dark:text-emerald-400">
+        {saving ? "Saving..." : saved ? "Settings saved." : ""}
+      </p>
 
       <div className="mt-4 flex gap-2">
         <label className="flex flex-1 flex-col gap-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
@@ -79,7 +83,7 @@ export function WorkspaceSetup() {
               disabled={saving || !exportPath.trim()}
               onClick={save}
             >
-              {saving ? "Saving..." : saved ? "✓ Saved" : "💾 Save"}
+              {saving ? "Saving..." : saved ? "✓ Saved" : "Save"}
             </button>
           </div>
         </label>

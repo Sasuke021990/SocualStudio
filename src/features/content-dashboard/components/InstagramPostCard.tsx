@@ -6,6 +6,7 @@ import { assembleImagePrompt } from "../variations";
 import { exclusivePlay } from "@/features/voice/audio-coordinator";
 import { acquireGenerationLock, releaseGenerationLock } from "../generation-lock";
 import { useGenerationLocked } from "../useGenerationLock";
+import { IconImage, IconMic, IconMusic, IconRefresh } from "@/components/icons";
 
 interface InstagramPostCardProps {
   variation: PostVariation;
@@ -178,7 +179,7 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
               backgroundImage: "radial-gradient(circle at 30% 50%, rgba(255,255,255,0.3) 0%, transparent 50%), radial-gradient(circle at 70% 80%, rgba(255,255,255,0.2) 0%, transparent 40%)",
             }} />
             <div className="relative z-10 flex w-full flex-col items-center gap-2 px-4 text-center">
-              <div className="text-4xl">📸</div>
+              <IconImage size={40} className="text-white/90" />
               <div className="w-full space-y-0.5 text-left">
                 {(Object.entries(variation.imageConcept) as Array<[string, string]>).map(([key, val]) => (
                   <div key={key} className="flex gap-1 text-[9px] leading-tight text-white/90">
@@ -201,7 +202,10 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
                   Generating image...
                 </>
               ) : (
-                <>🎨 Generate Image</>
+                <span className="inline-flex items-center gap-1">
+                  <IconImage size={13} />
+                  Generate Image
+                </span>
               )}
             </button>
           </>
@@ -220,7 +224,14 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
             disabled={generatingImage}
             className="absolute bottom-3 right-3 z-20 rounded-full bg-black/50 px-3 py-1.5 text-[10px] font-medium text-white backdrop-blur-sm transition hover:bg-black/70"
           >
-            {generatingImage ? "..." : "🔄 Regenerate"}
+            {generatingImage ? (
+              "..."
+            ) : (
+              <span className="inline-flex items-center gap-1">
+                <IconRefresh size={11} />
+                Regenerate
+              </span>
+            )}
           </button>
         )}
         {imageError && (
@@ -327,7 +338,7 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
                 disabled={generatingAudio || (anyGenerating && !generatingAudio)}
                 aria-label="Regenerate voice"
               >
-                🔄
+                <IconRefresh size={12} />
               </button>
             </div>
           ) : (
@@ -338,10 +349,10 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
                 onChange={(e) => setVoiceId(e.target.value)}
                 aria-label="Select voice"
               >
-                <option value="">🎤 Select voice</option>
+                <option value="">Select voice</option>
                 {voices.map((v) => (
                   <option key={v.id} value={v.id}>
-                    {v.kind === "cloned" ? "🎙️ " : "🎤 "}{v.name}
+                    {v.kind === "cloned" ? `${v.name} · cloned` : v.name}
                   </option>
                 ))}
               </select>
@@ -357,7 +368,10 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
                     ...
                   </>
                 ) : (
-                  <>🎙️ Voice-over</>
+                  <>
+                    <IconMic size={13} />
+                    Voice-over
+                  </>
                 )}
               </button>
             </div>
@@ -382,7 +396,7 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
                   disabled={generatingSfx || (anyGenerating && !generatingSfx)}
                   aria-label="Regenerate sound"
                 >
-                  🔄
+                  <IconRefresh size={12} />
                 </button>
               </div>
             ) : (
@@ -398,7 +412,10 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
                     Generating sound...
                   </>
                 ) : (
-                  <>🎵 Generate Sound</>
+                  <>
+                    <IconMusic size={13} />
+                    Generate Sound
+                  </>
                 )}
               </button>
             )}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { ContentItem, ContentStatus } from "@/features/content-dashboard/types";
 import { BackPill } from "@/components/nav";
+import { IconImage } from "@/components/icons";
 import { assembleImagePrompt } from "@/features/content-dashboard/variations";
 import { exclusivePlay } from "@/features/voice/audio-coordinator";
 import { acquireGenerationLock, releaseGenerationLock } from "@/features/content-dashboard/generation-lock";
@@ -219,9 +220,26 @@ export default function WorkspaceClient() {
 
   if (!item) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-4">
-        <p style={{ color: "var(--muted)" }}>Post not found.</p>
-        <Link href="/dashboard" className="btn-primary">Back to Dashboard</Link>
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
+        <div
+          className="flex h-14 w-14 items-center justify-center rounded-2xl"
+          style={{
+            background: "linear-gradient(135deg, rgba(99,102,241,0.25), rgba(168,85,247,0.15))",
+            border: "1px solid rgba(99,102,241,0.35)",
+            color: "var(--accent-bright)",
+          }}
+        >
+          <IconImage size={26} />
+        </div>
+        <p className="text-lg font-semibold" style={{ color: "#fff" }}>Post not found.</p>
+        <p className="max-w-sm text-sm leading-relaxed" style={{ color: "var(--muted)" }}>
+          This post may have been deleted, or the link is stale. Your drafts and approved posts are still where you left them.
+        </p>
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
+          <Link href="/dashboard" className="btn-primary">Back to Dashboard</Link>
+          <Link href="/projects" className="btn-ghost">Your Brands</Link>
+          <Link href="/approved" className="btn-ghost">Approved Posts</Link>
+        </div>
       </main>
     );
   }
@@ -264,7 +282,7 @@ export default function WorkspaceClient() {
                 <img src={image.url} alt={item.title} className="absolute inset-0 h-full w-full object-cover" />
               ) : (
                 <div className="relative z-10 flex w-full flex-col items-center gap-2 px-4 text-center">
-                  <div className="text-4xl">📸</div>
+                  <IconImage size={40} className="text-white/90" />
                   <div className="w-full space-y-0.5 text-left">
                     {Object.entries(imageConcept).map(([key, val]) => (
                       <div key={key} className="flex gap-1 text-[9px] leading-tight text-white/90">
@@ -462,7 +480,9 @@ export default function WorkspaceClient() {
 
           <div className="flex gap-3">
             <button type="button" className="btn-primary flex-1" disabled={saving} onClick={save}>
-              {saving ? "Saving..." : savedFlash ? "✓ Saved!" : "Save"}
+              <span role="status">
+                {saving ? "Saving..." : savedFlash ? "✓ Saved!" : "Save"}
+              </span>
             </button>
             <button
               type="button"

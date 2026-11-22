@@ -2,7 +2,7 @@ import Link from "next/link";
 import { LandingStats, LandingShowcase, LandingFooter } from "./landing-sections";
 
 export const metadata = {
-  title: "Social Studio",
+  title: { absolute: "Social Studio — AI Content Studio" },
   description: "AI-powered social media content studio",
 };
 
@@ -102,7 +102,7 @@ export default function LandingPage() {
 
         <div className="anim-rise anim-rise-3 mt-10 flex flex-wrap items-center justify-center gap-4">
           <Link href="/projects" className="btn-primary anim-glow !px-9 !py-4 !text-lg">
-            Open Studio
+            Choose a Brand
             <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden>
               <path d="M3 8h10m0 0l-4-4m4 4l-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>

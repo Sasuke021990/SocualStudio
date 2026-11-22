@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { PageChrome } from "@/components/nav";
+import { GoalIcon, TemplateIcon } from "@/components/icons";
 import { CONTENT_TEMPLATES } from "@/features/content-dashboard/types";
 import { CONTENT_GOALS, type ContentGoal } from "@/features/content-dashboard/goals";
 import type { PostVariation } from "@/features/content-dashboard/variations";
@@ -12,20 +13,6 @@ import { useGenerationLocked } from "@/features/content-dashboard/useGenerationL
 
 interface Voice { id: string; name: string; kind: string }
 interface Tool { id: string; name: string }
-
-function GoalIcon({ id, emoji }: { id: string; emoji: string }) {
-  const [failed, setFailed] = useState(false);
-  if (failed) return <span className="text-2xl">{emoji}</span>;
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={`/goals/${id}.png?v=2`}
-      alt=""
-      className="h-full w-full object-cover"
-      onError={() => setFailed(true)}
-    />
-  );
-}
 
 export default function TemplateClient() {
   const params = useParams<{ brainId: string; templateId: string }>();
@@ -230,7 +217,7 @@ export default function TemplateClient() {
                       border: "1px solid rgba(99,102,241,0.30)",
                     }}
                   >
-                    <GoalIcon id={g.id} emoji={g.icon} />
+                    <GoalIcon id={g.id} />
                   </span>
                   <span className="min-w-0">
                     <span className="block truncate text-xs font-semibold" style={{ color: "#fff" }}>{g.label}</span>
@@ -255,8 +242,8 @@ export default function TemplateClient() {
           {/* RIGHT: generation section */}
           <div>
         <div className="anim-rise flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl text-3xl" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
-            {tpl.icon}
+          <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+            <TemplateIcon id={tpl.id} />
           </div>
           <div>
             <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#fff" }}>{tpl.label}</h1>
@@ -294,7 +281,9 @@ export default function TemplateClient() {
               )}
               {selectedIds.size > 0 && (
                 <button type="button" className="btn-primary" disabled={saving} onClick={saveSelected}>
-                  {saving ? "Saving..." : saved ? "✓ Saved" : `Save ${selectedIds.size} to Drafts`}
+                  <span role="status">
+                    {saving ? "Saving..." : saved ? "✓ Saved" : `Save ${selectedIds.size} to Drafts`}
+                  </span>
                 </button>
               )}
               {tools.length > 0 && (
@@ -348,14 +337,14 @@ export default function TemplateClient() {
         {goal && variations.length === 0 && !generating && (
           <div className="glass mt-8 flex flex-col items-center gap-4 py-16 text-center">
             <div
-              className="flex h-18 w-18 items-center justify-center rounded-2xl text-4xl"
+              className="flex h-18 w-18 items-center justify-center overflow-hidden rounded-2xl"
               style={{
                 background: "linear-gradient(135deg, rgba(99,102,241,0.25), rgba(168,85,247,0.15))",
                 border: "1px solid rgba(99,102,241,0.35)",
                 boxShadow: "0 4px 18px -6px var(--accent-glow)",
               }}
             >
-              {goal.icon}
+              <GoalIcon id={goal.id} />
             </div>
             <div>
               <p className="font-semibold" style={{ color: "#fff" }}>Hit &ldquo;Create 5 Posts&rdquo;</p>
@@ -368,7 +357,7 @@ export default function TemplateClient() {
 
         {/* Tips strip */}
         <div className="glass anim-rise mt-10 p-6">
-          <h3 className="text-sm font-semibold uppercase tracking-widest" style={{ color: "var(--accent-bright)" }}>
+          <h3 className="text-base font-semibold" style={{ color: "#fff" }}>
             Tips for {tpl.label}
           </h3>
           <ul className="mt-4 grid gap-3 sm:grid-cols-3">

@@ -191,8 +191,10 @@ export function ProviderSettingsForm({ onSaved }: ProviderSettingsFormProps = {}
           )}
         </button>
 
-        {status === "saved" && <p className="text-sm text-emerald-600 dark:text-emerald-400">✓ Provider saved. You can now open the AI Generator.</p>}
-        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+        <p role="status" aria-live="polite" className="text-sm text-emerald-600 dark:text-emerald-400">
+          {status === "saved" ? "✓ Provider saved. You can now open the AI Generator." : ""}
+        </p>
+        {error && <p className="text-sm text-red-600 dark:text-red-400" role="alert">{error}</p>}
       </form>
     </section>
   );

@@ -1,5 +1,8 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import WorkspaceClient from "./workspace-client";
+
+export const metadata: Metadata = { title: "Post Workspace" };
 
 export default function WorkspacePage() {
   return (
