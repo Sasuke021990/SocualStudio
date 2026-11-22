@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, useCallback, type FormEvent } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@ui-sdk/react/select";
 import { AI_PRESETS } from "../presets";
 import type { ProviderConfig, ProviderId } from "../types";
 
@@ -9,9 +16,9 @@ interface ProviderResponse {
 }
 
 const DEFAULT_PROVIDER: ProviderConfig = {
-  providerId: "lm-studio",
-  baseUrl: "http://127.0.0.1:1235/v1",
-  model: "ornith-1.5-9b",
+  providerId: "openai",
+  baseUrl: "https://api.openai.com/v1",
+  model: "gpt-4o-mini",
 };
 
 interface ProviderSettingsFormProps {
@@ -26,6 +33,18 @@ export function ProviderSettingsForm({ onSaved }: ProviderSettingsFormProps = {}
   const [loadingModels, setLoadingModels] = useState(false);
 
   // Load current saved config + available models on mount
+  const loadModels = useCallback(() => {
+    setLoadingModels(true);
+    fetch("/api/ai/models")
+      .then((res) => res.json())
+      .then((data: { models?: { id: string }[]; error?: string }) => {
+        if (data.models?.length) setModels(data.models);
+        else setModels([]);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingModels(false));
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     fetch("/api/settings")
@@ -36,24 +55,9 @@ export function ProviderSettingsForm({ onSaved }: ProviderSettingsFormProps = {}
         }
       })
       .catch(() => {});
-
-    // Defer to next microtask so React treats it as a separate render cycle, avoiding the cascading-render lint.
-    setTimeout(() => {
-      if (!cancelled) setLoadingModels(true);
-    }, 0);
-
-    fetch("/api/ai/models")
-      .then((res) => res.json())
-      .then((data: { models?: { id: string }[]; error?: string }) => {
-        if (!cancelled && data.models?.length) {
-          setModels(data.models);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoadingModels(false));
-
-    return () => { cancelled = true; };
-  }, []);
+    const t = setTimeout(loadModels, 0);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [loadModels]);
 
   const handleProviderChange = (providerId: ProviderId) => {
     const preset = AI_PRESETS.find((p) => p.id === providerId);
@@ -83,6 +87,7 @@ export function ProviderSettingsForm({ onSaved }: ProviderSettingsFormProps = {}
       setProvider(data.provider);
       setStatus("saved");
       onSaved?.(data.provider);
+      loadModels();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save provider settings");
       setStatus("idle");
@@ -100,18 +105,17 @@ export function ProviderSettingsForm({ onSaved }: ProviderSettingsFormProps = {}
       </p>
       <form className="mt-4 flex flex-col gap-4" onSubmit={handleSubmit}>
         {/* Provider */}
-        <label className="flex flex-col gap-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
-          Provider
-          <select
-            className="rounded-lg border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-            value={provider.providerId}
-            onChange={(e) => handleProviderChange(e.target.value as ProviderId)}
-          >
-            {AI_PRESETS.map((preset) => (
-              <option key={preset.id} value={preset.id}>{preset.label}</option>
-            ))}
-          </select>
-        </label>
+        <Select
+          items={AI_PRESETS.map((p) => ({ value: p.id, label: p.label }))}
+          value={provider.providerId}
+          onValueChange={(v) => handleProviderChange(v as ProviderId)}
+        >
+          <SelectLabel>Provider</SelectLabel>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent />
+        </Select>
 
         {/* Base URL */}
         <label className="flex flex-col gap-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">

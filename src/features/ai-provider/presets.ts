@@ -10,6 +10,13 @@ export interface AIPreset {
 
 export const AI_PRESETS: AIPreset[] = [
   {
+    id: "openai",
+    label: "OpenAI",
+    baseUrl: "https://api.openai.com/v1",
+    defaultModel: "gpt-4o-mini",
+    requiresApiKey: true,
+  },
+  {
     id: "lm-studio",
     label: "LM Studio (local)",
     baseUrl: "http://127.0.0.1:1235/v1",
@@ -22,13 +29,6 @@ export const AI_PRESETS: AIPreset[] = [
     baseUrl: "http://localhost:11434/v1",
     defaultModel: "llama3.1",
     requiresApiKey: false,
-  },
-  {
-    id: "openai",
-    label: "OpenAI",
-    baseUrl: "https://api.openai.com/v1",
-    defaultModel: "gpt-4o-mini",
-    requiresApiKey: true,
   },
   {
     id: "custom",

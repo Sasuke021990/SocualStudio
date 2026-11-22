@@ -226,6 +226,8 @@ export default function WorkspaceClient() {
 
   return (
     <main className="relative min-h-screen">
+      <div aria-hidden className="hero-mesh absolute inset-x-0 top-0 h-[380px]" />
+      <div aria-hidden className="hero-grid absolute inset-x-0 top-0 h-[380px]" />
       {/* Back nav — the ONLY chrome on this page */}
       <div className="mx-auto flex max-w-5xl items-center justify-between px-6 pt-8">
         <Link

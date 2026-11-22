@@ -22,7 +22,7 @@ async function resolveMediaFile(mediaUrl: string): Promise<string | null> {
     if (file) {
       const safe = basename(file);
       for (const dir of [SFX_OUTPUT_DIR, TTS_OUTPUT_DIR]) {
-        const p = join(dir, safe);
+        const p = join(/*turbopackIgnore: true*/ dir, safe);
         if (await stat(p).catch(() => null)) return p;
       }
     }
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
   const folderName = safeFolderName(item.title);
   const workspace = await getWorkspaceConfig();
   const baseDir = workspace.exportPath || EXPORTS_DIR_DEFAULT;
-  const folderPath = join(baseDir, folderName);
+  const folderPath = join(/*turbopackIgnore: true*/ baseDir, folderName);
   await mkdir(folderPath, { recursive: true });
 
   const saved: string[] = [];
@@ -80,8 +80,8 @@ export async function POST(request: Request) {
   if (v.generatedImage) {
     const src = await resolveMediaFile(v.generatedImage);
     if (src) {
-      const buf = await readFile(src);
-      await writeFile(join(folderPath, "image.png"), buf);
+      const buf = await readFile(/*turbopackIgnore: true*/ src);
+      await writeFile(join(/*turbopackIgnore: true*/ folderPath, "image.png"), buf);
       saved.push("image.png");
     }
   }
@@ -90,8 +90,8 @@ export async function POST(request: Request) {
   if (v.voiceAudio) {
     const src = await resolveMediaFile(v.voiceAudio);
     if (src) {
-      const buf = await readFile(src);
-      await writeFile(join(folderPath, "voice.wav"), buf);
+      const buf = await readFile(/*turbopackIgnore: true*/ src);
+      await writeFile(join(/*turbopackIgnore: true*/ folderPath, "voice.wav"), buf);
       saved.push("voice.wav");
     }
   }
@@ -100,15 +100,15 @@ export async function POST(request: Request) {
   if (v.sfxAudio) {
     const src = await resolveMediaFile(v.sfxAudio);
     if (src) {
-      const buf = await readFile(src);
-      await writeFile(join(folderPath, "sound.wav"), buf);
+      const buf = await readFile(/*turbopackIgnore: true*/ src);
+      await writeFile(join(/*turbopackIgnore: true*/ folderPath, "sound.wav"), buf);
       saved.push("sound.wav");
     }
   }
 
   // Caption text
   const captionText = `${v.caption}\n\n${v.hashtags.map((h) => `#${h}`).join(" ")}\n\nCTA: ${v.cta}`;
-  await writeFile(join(folderPath, "caption.txt"), captionText, "utf-8");
+  await writeFile(join(/*turbopackIgnore: true*/ folderPath, "caption.txt"), captionText, "utf-8");
   saved.push("caption.txt");
 
   // README
@@ -132,7 +132,7 @@ export async function POST(request: Request) {
     v.soundPrompt || "-",
     "",
   ].join("\n");
-  await writeFile(join(folderPath, "README.md"), readme, "utf-8");
+  await writeFile(join(/*turbopackIgnore: true*/ folderPath, "README.md"), readme, "utf-8");
   saved.push("README.md");
 
   return NextResponse.json({

@@ -57,6 +57,13 @@ Landing → Projects (+ Create Brand) → Studio → Template Detail → Drafts 
 - Implementation via **ui-sdk** (@ui-sdk/core installed) + design skills
 - **Qwen 2.1** is the primary image-generation tool (prompt-following fixed)
 
+## AI Provider Behavior (revised)
+
+- **Default: OpenAI** — base URL `https://api.openai.com/v1` pre-filled, API key field (real key required for cloud), models load automatically from the endpoint after saving
+- **Also accepts Ollama / LM Studio base URLs** — user enters the URL (e.g. `http://localhost:11434/v1`, `http://127.0.0.1:1235/v1`) with **blank or dummy API key** — no real key needed for local servers
+- Model dropdown always auto-populates from the connected endpoint's `/models` API (works for OpenAI, Ollama, LM Studio, custom OpenAI-compatible)
+- Preset picker: OpenAI (default) / Ollama / LM Studio / Custom — presets pre-fill base URL and indicate whether a real key is required
+
 ## Assumptions
 
 - Local single-user, no auth/multi-tenancy/cloud
@@ -77,6 +84,7 @@ Landing → Projects (+ Create Brand) → Studio → Template Detail → Drafts 
 | 8 | Separate Drafts + Approved pages | combined feed | User choice |
 | 9 | Desktop-only | responsive | Confirmed |
 | 10 | ui-sdk implementation | custom CSS | User instruction |
+| 11 | AI Provider default = OpenAI URL + real key; Ollama/LM Studio accepted with blank/dummy key; models auto-load | LM Studio default (current) | User requirement change |
 
 ## Mockups (Z Turbo)
 
