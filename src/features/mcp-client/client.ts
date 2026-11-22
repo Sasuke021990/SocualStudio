@@ -4,6 +4,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import type { McpServerConfig } from "./types";
 
 const TOOL_TIMEOUT_MS = 30_000;
+const CONNECT_TIMEOUT_MS = 15_000;
 
 export interface McpConnection {
   listTools(): Promise<Array<{ name: string; description: string }>>;
@@ -27,7 +28,23 @@ function createTransport(server: McpServerConfig) {
 export async function connect(server: McpServerConfig): Promise<McpConnection> {
   const client = new Client({ name: "social-studio", version: "1.0.0" });
   const transport = createTransport(server);
-  await client.connect(transport);
+
+  // A dead or misconfigured process (e.g. node spawned without a script) can
+  // leave the initialize handshake pending forever — never hang the caller.
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      client.connect(transport),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`Connection timed out after ${CONNECT_TIMEOUT_MS / 1000}s`)), CONNECT_TIMEOUT_MS);
+      }),
+    ]);
+  } catch (err) {
+    client.close().catch(() => {});
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 
   return {
     async listTools() {

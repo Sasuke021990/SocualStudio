@@ -112,6 +112,8 @@ export function McpSetup() {
     load();
   };
 
+  const committedArgs = () => [...form!.args, ...(argDraft.trim() ? [argDraft.trim()] : [])];
+
   const saveServer = async () => {
     if (!form) return;
     setSaving(true);
@@ -121,7 +123,7 @@ export function McpSetup() {
         name: form.name,
         transport: form.transport,
         command: form.transport === "stdio" ? form.command : undefined,
-        args: form.transport === "stdio" ? form.args : undefined,
+        args: form.transport === "stdio" ? committedArgs() : undefined,
         env: form.transport === "stdio" ? rowsToRecord(form.env) : undefined,
         url: form.transport === "http" ? form.url : undefined,
         headers: form.transport === "http" ? rowsToRecord(form.headers) : undefined,
@@ -484,7 +486,7 @@ export function McpSetup() {
                       name: form.name,
                       transport: form.transport,
                       command: form.transport === "stdio" ? form.command : undefined,
-                      args: form.transport === "stdio" ? form.args : undefined,
+                      args: form.transport === "stdio" ? committedArgs() : undefined,
                       env: form.transport === "stdio" ? rowsToRecord(form.env) : undefined,
                       url: form.transport === "http" ? form.url : undefined,
                       headers: form.transport === "http" ? rowsToRecord(form.headers) : undefined,
