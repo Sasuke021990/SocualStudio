@@ -5,11 +5,12 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { ContentItem, ContentStatus } from "@/features/content-dashboard/types";
 import { BackPill } from "@/components/nav";
-import { IconImage } from "@/components/icons";
+import { IconImage, IconSpark } from "@/components/icons";
 import { assembleImagePrompt } from "@/features/content-dashboard/variations";
 import { exclusivePlay } from "@/features/voice/audio-coordinator";
 import { acquireGenerationLock, releaseGenerationLock } from "@/features/content-dashboard/generation-lock";
 import { useGenerationLocked } from "@/features/content-dashboard/useGenerationLock";
+import { reelSpecSchema, type ReelSpec } from "@/features/reel/schemas";
 
 interface Voice {
   id: string;
@@ -55,6 +56,26 @@ export default function WorkspaceClient() {
   const [sfxError, setSfxError] = useState<string | null>(null);
   const anyGenerating = useGenerationLocked();
 
+  // Reel
+  const [reelPrompt, setReelPrompt] = useState(
+    "Punchy reel — hook in the first 2 seconds, one idea per line, emotional payoff, soft CTA at the end.",
+  );
+  const [reelSpec, setReelSpec] = useState<ReelSpec | null>(null);
+  const [specDraft, setSpecDraft] = useState("");
+  const [hookScore, setHookScore] = useState<number | null>(null);
+  const [planState, setPlanState] = useState<"idle" | "planning" | "planned">("idle");
+  const [planAccepted, setPlanAccepted] = useState(false);
+  const [reelError, setReelError] = useState<string | null>(null);
+  const [reelDuration, setReelDuration] = useState<15 | 30>(15);
+  const [showImagePopup, setShowImagePopup] = useState(false);
+  const [imageCountPick, setImageCountPick] = useState<1 | 2 | 3>(3);
+  const [showGenModal, setShowGenModal] = useState(false);
+  const [reelPhase, setReelPhase] = useState("");
+  const [reelMeta, setReelMeta] = useState<{ videoFile: string; imageFiles: string[]; createdAt: string } | null>(null);
+  const [cardView, setCardView] = useState<"image" | "reel">("image");
+
+  const readOnly = item?.status === "approved";
+
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/content-dashboard`, { cache: "no-store" })
@@ -72,6 +93,17 @@ export default function WorkspaceClient() {
           if (found.variation.generatedImage) setImage({ url: found.variation.generatedImage });
           if (found.variation.voiceAudio) setAudio({ url: found.variation.voiceAudio });
           if (found.variation.sfxAudio) setSfx({ soundPrompt: found.variation.soundPrompt, audio: { url: found.variation.sfxAudio } });
+          if (found.variation.reelSpec) {
+            setReelSpec(found.variation.reelSpec);
+            setSpecDraft(found.variation.reelSpec.narration);
+            setReelDuration(found.variation.reelSpec.durationSeconds);
+            setPlanState("planned");
+            setPlanAccepted(true);
+          }
+          if (found.variation.reel) {
+            setReelMeta(found.variation.reel);
+            setCardView("reel");
+          }
         } else if (found) {
           setCaption(found.output);
         }
@@ -101,6 +133,8 @@ export default function WorkspaceClient() {
     generatedImage: image?.url ?? null,
     voiceAudio: audio?.url ?? null,
     sfxAudio: sfx?.audio.url ?? null,
+    ...(reelSpec ? { reelSpec } : {}),
+    ...(reelMeta ? { reel: reelMeta } : {}),
   });
 
   const buildOutput = () =>
@@ -116,6 +150,95 @@ export default function WorkspaceClient() {
     setSaving(false);
     setSavedFlash(true);
     setTimeout(() => setSavedFlash(false), 2000);
+  };
+
+  // ── Reel ─────────────────────────────────────────────────────────────
+
+  const generatePlan = async (imageCount: 1 | 2 | 3) => {
+    setShowImagePopup(false);
+    setPlanState("planning");
+    setReelError(null);
+    try {
+      const res = await fetch("/api/reel/plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: id, prompt: reelPrompt, durationSeconds: reelDuration, imageCount }),
+      });
+      const data = (await res.json()) as { spec?: ReelSpec; hookScore?: number; error?: string };
+      if (!res.ok || !data.spec) throw new Error(data.error ?? "Planning failed");
+      setReelSpec(data.spec);
+      setSpecDraft(data.spec.narration);
+      setHookScore(data.hookScore ?? null);
+      setPlanAccepted(false);
+      setPlanState("planned");
+    } catch (err) {
+      setPlanState("idle");
+      setReelError(err instanceof Error ? err.message : "Planning failed");
+    }
+  };
+
+  const usePlan = async () => {
+    if (!reelSpec) return;
+    const candidate = { ...reelSpec, narration: specDraft.trim() };
+    const parsedSpec = reelSpecSchema.safeParse(candidate);
+    if (!parsedSpec.success) {
+      setReelError(parsedSpec.error.issues[0]?.message ?? "Invalid script");
+      return;
+    }
+    setReelError(null);
+    setReelSpec(parsedSpec.data);
+    setPlanAccepted(true);
+    await fetch("/api/content-dashboard", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, variation: { ...buildVariation(), reelSpec: parsedSpec.data } }),
+    }).catch(() => {});
+  };
+
+  const generateReel = async () => {
+    if (!reelSpec || !planAccepted) return;
+    if (!acquireGenerationLock(`reel-${id}`)) return;
+    setShowGenModal(true);
+    setReelPhase("Starting…");
+    setReelError(null);
+    try {
+      const res = await fetch("/api/reel/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: id, connectionId: toolId ?? undefined }),
+      });
+      if (!res.ok || !res.body) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? `Request failed (${res.status})`);
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let done = false;
+      while (!done) {
+        const { value, done: sd } = await reader.read();
+        if (sd) done = true;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const evt = JSON.parse(line) as { phase?: string; done?: { videoUrl: string }; error?: string };
+          if (evt.phase) setReelPhase(evt.phase);
+          if (evt.error) throw new Error(evt.error);
+          if (evt.done) {
+            setReelMeta({ videoFile: "reel.mp4", imageFiles: [], createdAt: new Date().toISOString() });
+            setCardView("reel");
+          }
+        }
+      }
+    } catch (err) {
+      setReelError(err instanceof Error ? err.message : "Reel generation failed");
+    } finally {
+      setShowGenModal(false);
+      setReelPhase("");
+      releaseGenerationLock(`reel-${id}`);
+    }
   };
 
   const markApproved = async () => {
@@ -207,6 +330,18 @@ export default function WorkspaceClient() {
     }
   };
 
+  const reelBlockedReason = readOnly
+    ? "Approved posts are not editable"
+    : !reelSpec || !planAccepted
+      ? "Generate and accept a reel plan first"
+      : !audio
+        ? "Generate voice-over first"
+        : !sfx
+          ? "Generate sound first"
+          : anyGenerating
+            ? "Another generation is running"
+            : null;
+
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center">
@@ -275,9 +410,33 @@ export default function WorkspaceClient() {
               <div className="text-[13px] font-semibold" style={{ color: "#262626" }}>{handle}</div>
             </div>
 
-            {/* Image */}
+            {/* Image / Reel */}
             <div className="relative flex aspect-square items-center justify-center overflow-hidden" style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}>
-              {image ? (
+              {reelMeta && (
+                <div className="absolute left-3 top-3 z-20 flex gap-1.5">
+                  {(["image", "reel"] as const).map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      aria-pressed={cardView === v}
+                      onClick={() => setCardView(v)}
+                      className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize backdrop-blur-sm transition ${
+                        cardView === v ? "bg-white text-zinc-800" : "bg-black/50 text-white hover:bg-black/70"
+                      }`}
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {cardView === "reel" && reelMeta ? (
+                <video
+                  controls
+                  src={`/api/reel/file?item=${id}`}
+                  className="absolute inset-0 h-full w-full object-contain"
+                  style={{ background: "#000" }}
+                />
+              ) : image ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={image.url} alt={item.title} className="absolute inset-0 h-full w-full object-cover" />
               ) : (
@@ -296,7 +455,7 @@ export default function WorkspaceClient() {
               <button
                 type="button"
                 className="absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full bg-white/90 px-4 py-2 text-xs font-semibold text-zinc-800 shadow-lg transition hover:bg-white disabled:opacity-70"
-                disabled={generatingImage || (anyGenerating && !generatingImage)}
+                disabled={readOnly || generatingImage || (anyGenerating && !generatingImage)}
                 onClick={generateImage}
               >
                 {generatingImage ? "Generating image..." : image ? "Regenerate Image" : "Generate Image"}
@@ -362,6 +521,46 @@ export default function WorkspaceClient() {
               </div>
             )}
 
+            {/* Reel */}
+            <div className="mt-3">
+              <div className="text-xs font-medium" style={{ color: "var(--muted)" }}>Reel length</div>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                {([15, 30] as const).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    aria-pressed={reelDuration === d}
+                    disabled={readOnly || planState === "planning"}
+                    onClick={() => setReelDuration(d)}
+                    className="chip cursor-pointer transition"
+                    style={reelDuration === d ? { borderColor: "var(--accent)", color: "var(--accent-bright)" } : undefined}
+                  >
+                    {d}s
+                  </button>
+                ))}
+                {reelSpec && reelSpec.durationSeconds !== reelDuration && (
+                  <span className="text-[10px]" style={{ color: "var(--rose)" }}>
+                    plan is {reelSpec.durationSeconds}s — regenerate
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="mt-2">
+              <button
+                type="button"
+                className="btn-primary w-full cursor-pointer !py-2 !text-xs"
+                disabled={Boolean(reelBlockedReason)}
+                title={reelBlockedReason ?? ""}
+                onClick={generateReel}
+              >
+                <IconSpark size={13} />
+                {reelMeta ? "Regenerate Reel" : "Generate Reel"}
+              </button>
+              {reelBlockedReason && (
+                <p className="mt-1 text-[11px]" style={{ color: "var(--muted)" }}>{reelBlockedReason}</p>
+              )}
+            </div>
+
             <div className="mt-3 flex items-center gap-1.5">
               <select
                 className="field-input flex-1 !py-1.5 !text-xs"
@@ -377,7 +576,7 @@ export default function WorkspaceClient() {
               <button
                 type="button"
                 className="btn-primary cursor-pointer px-3 py-1.5 text-xs"
-                disabled={generatingAudio || !voices.length || (anyGenerating && !generatingAudio)}
+                disabled={readOnly || generatingAudio || !voices.length || (anyGenerating && !generatingAudio)}
                 onClick={generateVoice}
               >
                 {generatingAudio ? "..." : "Voice-over"}
@@ -400,7 +599,7 @@ export default function WorkspaceClient() {
               <button
                 type="button"
                 className="btn-ghost w-full cursor-pointer"
-                disabled={generatingSfx || (anyGenerating && !generatingSfx)}
+                disabled={readOnly || generatingSfx || (anyGenerating && !generatingSfx)}
                 onClick={generateSound}
               >
                 {generatingSfx ? "Generating sound..." : "Generate Sound"}
@@ -419,6 +618,7 @@ export default function WorkspaceClient() {
                 className="field-input !normal-case !tracking-normal"
                 rows={5}
                 value={caption}
+                disabled={readOnly}
                 onChange={(e) => setCaption(e.target.value)}
               />
             </label>
@@ -432,6 +632,7 @@ export default function WorkspaceClient() {
                     <button
                       type="button"
                       className="ml-1 cursor-pointer opacity-60 hover:opacity-100"
+                      disabled={readOnly}
                       onClick={() => setHashtags(hashtags.filter((_, j) => j !== i))}
                       aria-label={`Remove ${tag}`}
                     >
@@ -444,6 +645,7 @@ export default function WorkspaceClient() {
                 type="text"
                 className="field-input mt-1.5 !text-xs"
                 value={newTag}
+                disabled={readOnly}
                 onChange={(e) => setNewTag(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -463,6 +665,7 @@ export default function WorkspaceClient() {
                 type="text"
                 className="field-input !normal-case !tracking-normal"
                 value={cta}
+                disabled={readOnly}
                 onChange={(e) => setCta(e.target.value)}
               />
             </label>
@@ -473,29 +676,162 @@ export default function WorkspaceClient() {
                 className="field-input !normal-case !tracking-normal"
                 rows={2}
                 value={soundPrompt}
+                disabled={readOnly}
                 onChange={(e) => setSoundPrompt(e.target.value)}
               />
             </label>
           </div>
 
-          <div className="flex gap-3">
-            <button type="button" className="btn-primary flex-1" disabled={saving} onClick={save}>
-              <span role="status">
-                {saving ? "Saving..." : savedFlash ? "✓ Saved!" : "Save"}
-              </span>
-            </button>
-            <button
-              type="button"
-              className="btn-primary flex-1"
-              style={{ background: "linear-gradient(120deg, #10b981, #34d399)" }}
-              disabled={saving}
-              onClick={markApproved}
-            >
-              ✓ Mark as Approved
-            </button>
+          {/* 15-sec Reel */}
+          <div className="glass p-4">
+            <h3 className="text-sm font-semibold" style={{ color: "#fff" }}>15-sec Reel</h3>
+
+            <label className="mt-2 flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--accent-bright)" }}>
+              Reel prompt
+              <textarea
+                className="field-input !normal-case !tracking-normal"
+                rows={2}
+                value={reelPrompt}
+                disabled={readOnly || planState === "planning"}
+                onChange={(e) => setReelPrompt(e.target.value)}
+                placeholder="e.g. Punchy reel for young investors — hook with a bold claim, end with the CTA"
+              />
+            </label>
+
+            {!readOnly && (
+              <button
+                type="button"
+                className="btn-ghost mt-2 w-full cursor-pointer"
+                disabled={planState === "planning" || anyGenerating}
+                onClick={() => setShowImagePopup(true)}
+              >
+                {planState === "planning" ? "Planning…" : reelSpec ? "Regenerate Reel Plan" : "Generate Reel Plan"}
+              </button>
+            )}
+
+            {hookScore !== null && planState === "planned" && (
+              <p className="mt-2 text-[11px]" style={{ color: "var(--muted)" }}>Hook score: {hookScore}/10</p>
+            )}
+
+            {reelSpec && (
+              <>
+                <label className="mt-2 flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--accent-bright)" }}>
+                  Script (editable)
+                  <textarea
+                    className="field-input !normal-case !tracking-normal"
+                    rows={4}
+                    value={specDraft}
+                    disabled={readOnly}
+                    onChange={(e) => { setSpecDraft(e.target.value); setPlanAccepted(false); }}
+                  />
+                </label>
+                <p className="mt-1 text-[11px]" style={{ color: "var(--muted)" }}>
+                  {specDraft.trim().split(/\s+/).filter(Boolean).length} words · {reelSpec.imageCount} image{reelSpec.imageCount > 1 ? "s" : ""} · {reelSpec.durationSeconds}s · captions auto-synced to the voice
+                </p>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    className="btn-primary mt-2 w-full cursor-pointer !py-2 !text-xs"
+                    disabled={planAccepted}
+                    onClick={usePlan}
+                  >
+                    {planAccepted ? "✓ Plan in use" : "Use Plan"}
+                  </button>
+                )}
+              </>
+            )}
+
+            {reelError && <p className="mt-2 text-[11px]" style={{ color: "var(--rose)" }} role="alert">{reelError}</p>}
           </div>
+
+          {!readOnly && (
+            <div className="flex gap-3">
+              <button type="button" className="btn-primary flex-1" disabled={saving} onClick={save}>
+                <span role="status">
+                  {saving ? "Saving..." : savedFlash ? "✓ Saved!" : "Save"}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="btn-primary flex-1"
+                style={{ background: "linear-gradient(120deg, #10b981, #34d399)" }}
+                disabled={saving}
+                onClick={markApproved}
+              >
+                ✓ Mark as Approved
+              </button>
+            </div>
+          )}
+          {readOnly && (
+            <p className="text-center text-xs" style={{ color: "var(--muted)" }}>
+              ✓ Approved — this post is final and can no longer be edited.
+            </p>
+          )}
         </div>
       </div>
+
+      {/* Image-count popup (asked before planning) */}
+      {showImagePopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: "rgba(2,4,10,0.85)" }} role="dialog" aria-modal="true" aria-label="How many images">
+          <div
+            className="w-full p-6"
+            style={{ maxWidth: "22rem", background: "#151a26", border: "1px solid var(--border-bright)", borderRadius: "1rem", boxShadow: "0 24px 80px -12px rgba(0,0,0,0.7)" }}
+          >
+            <h3 className="text-base font-semibold" style={{ color: "#fff" }}>How many images?</h3>
+            <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
+              Generated fresh for the reel — one visual per story beat. You can pick 1 to 3.
+            </p>
+            <div className="mt-4 flex gap-2">
+              {([1, 2, 3] as const).map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  aria-pressed={imageCountPick === n}
+                  onClick={() => setImageCountPick(n)}
+                  className="flex-1 cursor-pointer rounded-xl py-3 text-sm font-semibold transition"
+                  style={
+                    imageCountPick === n
+                      ? { background: "#4f46e5", color: "#fff" }
+                      : { background: "rgba(255,255,255,0.05)", color: "var(--muted)", border: "1px solid var(--border)" }
+                  }
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            <div className="mt-5 flex gap-2">
+              <button type="button" className="btn-ghost flex-1" onClick={() => setShowImagePopup(false)}>
+                Cancel
+              </button>
+              <button type="button" className="btn-primary flex-1" onClick={() => generatePlan(imageCountPick)}>
+                Create Plan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Generation modal — freezes the app while the reel renders */}
+      {showGenModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: "rgba(2,4,10,0.85)" }} role="dialog" aria-modal="true" aria-label="Generating your reel">
+          <div
+            className="w-full p-8 text-center"
+            style={{ maxWidth: "24rem", background: "#151a26", border: "1px solid var(--border-bright)", borderRadius: "1rem", boxShadow: "0 24px 80px -12px rgba(0,0,0,0.7)" }}
+          >
+            <svg className="mx-auto h-10 w-10 animate-spin" viewBox="0 0 24 24" aria-hidden>
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" opacity="0.25" style={{ color: "var(--accent)" }} />
+              <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" stroke="currentColor" strokeWidth="3" fill="none" style={{ color: "var(--accent-bright)" }} />
+            </svg>
+            <h3 className="mt-4 text-base font-semibold" style={{ color: "#fff" }}>Generating your reel…</h3>
+            <p className="mt-2 text-sm" style={{ color: "var(--muted)" }} role="status" aria-live="polite">
+              {reelPhase}
+            </p>
+            <p className="mt-3 text-[11px]" style={{ color: "var(--muted)" }}>
+              This can take a few minutes — please keep this tab open.
+            </p>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
