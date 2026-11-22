@@ -36,6 +36,7 @@
 | D5 | **Lazy** per-generation connections (open → use → close) | resident daemons | stateless app, no lifecycle management |
 | D6 | Tool budget: **5 tool-call rounds / 8 tool executions** per request, 30 s call timeout | unlimited | latency + cost guard |
 | D7 | Tool failures return `"[tool error] …"` strings; never throw into generation | hard-fail generation | resilience |
+| D8 | Tool results **folded into the final prompt** (`[Tool results]` block) instead of `role:"tool"` message round-trips | full multi-turn tool message history | keeps `response_format` + streaming paths untouched; local-provider compatibility |
 
 ## 4. Final Design
 
