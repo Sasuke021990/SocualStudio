@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getProviderConfig } from "@/features/ai-provider/store";
 import { OpenAICompatibleProvider } from "@/features/ai-provider";
+import { acquireToolset } from "@/features/mcp-client/registry";
 import { freeComfyUIModels } from "@/features/comfyui/free";
 import type { ProviderConfig } from "@/features/ai-provider/types";
 
@@ -110,9 +111,11 @@ Schema:
 Extract as much detail as possible. Use arrays even for single items. If information is missing, use empty arrays or descriptive strings based on inference from the source.`;
 
   try {
+    const toolset = await acquireToolset("brandExtraction");
     const result = await provider.generateContent<BrandExtraction>({
       config,
       system: systemPrompt,
+      toolset: toolset ?? undefined,
       prompt: `Extract all brand details from the following source material:\n\n---\n${sourceText}\n---`,
       schema: brandExtractionSchema,
     });

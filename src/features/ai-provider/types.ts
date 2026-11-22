@@ -14,10 +14,26 @@ export interface AIMessage {
   content: string;
 }
 
+export interface ToolSpec {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+}
+
+/** Structural match for `features/mcp-client` registry toolsets. */
+export interface Toolset {
+  tools: ToolSpec[];
+  execute(name: string, args: unknown): Promise<string>;
+}
+
 export interface StreamChatParams {
   config: ProviderConfig;
   messages: AIMessage[];
   signal?: AbortSignal;
+  toolset?: Toolset;
 }
 
 export interface GenerateContentParams<T> {
@@ -27,6 +43,7 @@ export interface GenerateContentParams<T> {
   signal?: AbortSignal;
   maxRetries?: number;
   schema: ZodType<T>;
+  toolset?: Toolset;
 }
 
 export interface AIProvider {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getProviderConfig } from "@/features/ai-provider/store";
 import { OpenAICompatibleProvider } from "@/features/ai-provider";
+import { acquireToolset } from "@/features/mcp-client/registry";
 import { freeComfyUIModels } from "@/features/comfyui/free";
 import { imageConceptSchema } from "@/features/content-dashboard/variations";
 import type { ProviderConfig } from "@/features/ai-provider/types";
@@ -118,10 +119,12 @@ Return ONLY valid JSON — no markdown fences, no prose.`;
         for (let i = 0; i < count; i++) {
           try {
             // PHASE 1: caption
-            send({ phase: `Variation ${i + 1}/${count} — writing caption...` });
+            send({ phase: `Variation ${i + 1}/${count} - writing caption...` });
+            const toolset = await acquireToolset("contentGeneration");
             const captionResult = await provider.generateContent<z.infer<typeof captionWrapSchema>>({
               config,
               system: captionSystemPrompt,
+              toolset: toolset ?? undefined,
               prompt: `Generate variation ${i + 1} of ${count} for ${brandName}${topic ? ` about "${topic}"` : ""} on ${platform}. Make it DIFFERENT in angle/hook/tone.`,
               schema: captionWrapSchema,
               maxRetries: 3,
@@ -134,6 +137,7 @@ Return ONLY valid JSON — no markdown fences, no prose.`;
             const imageResult = await provider.generateContent<z.infer<typeof imageFromCaptionSchema>>({
               config,
               system: imageSystemPrompt,
+              toolset: toolset ?? undefined,
               prompt: `Create the image for this exact post. The image must visually depict this caption's message and metaphor:\n\n---\n${cap.caption}\n---\n\nCTA: ${cap.cta}\nHashtags: ${cap.hashtags.join(", ")}`,
               schema: imageFromCaptionSchema,
               maxRetries: 3,

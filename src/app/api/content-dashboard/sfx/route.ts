@@ -4,6 +4,7 @@ import { mkdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { getProviderConfig } from "@/features/ai-provider/store";
 import { OpenAICompatibleProvider } from "@/features/ai-provider";
+import { acquireToolset } from "@/features/mcp-client/registry";
 import { freeComfyUIModels } from "@/features/comfyui/free";
 import { unloadLocalModel } from "@/features/ai-provider/unload";
 import { generateSoundEffect, SFX_OUTPUT_DIR, sfxAvailable } from "@/features/voice/sfx";
@@ -63,9 +64,11 @@ Rules:
 Schema: { "soundPrompt": string }`;
 
     try {
+      const toolset = await acquireToolset("contentGeneration");
       const result = await provider.generateContent<z.infer<typeof sfxPromptSchema>>({
         config,
         system: systemPrompt,
+        toolset: toolset ?? undefined,
         prompt: `Post for ${brandName ?? "a brand"}:\n\nCaption: ${caption}\n${imageConcept ? `\nVisual: ${imageConcept}` : ""}\n\nWrite the sound-effect description.`,
         schema: sfxPromptSchema,
         maxRetries: 2,

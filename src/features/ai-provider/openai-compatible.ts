@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { z, type ZodType } from "zod";
 import type { Stream } from "openai/core/streaming";
-import type { AIProvider, ProviderConfig, StreamChatParams, GenerateContentParams } from "./types";
+import type { AIProvider, ProviderConfig, StreamChatParams, GenerateContentParams, AIMessage, Toolset } from "./types";
 
 const DEFAULT_BASE_URLS: Record<string, string> = {
   "lm-studio": "http://127.0.0.1:1235/v1",
@@ -17,6 +17,10 @@ function sleep(ms: number): Promise<void> {
 }
 
 type ResponseFormat = OpenAI.Chat.Completions.ChatCompletionCreateParams["response_format"];
+
+const TOOL_MAX_ROUNDS = 5;
+const TOOL_MAX_EXECUTIONS = 8;
+const TOOL_CONTEXT_MAX_CHARS = 16_000;
 
 function buildResponseFormats<T>(schema: ZodType<T>): ResponseFormat[] {
   const formats: ResponseFormat[] = [];
@@ -79,9 +83,12 @@ export class OpenAICompatibleProvider implements AIProvider {
   }
 
   async *streamChat(params: StreamChatParams): AsyncGenerator<string> {
-    const { config, messages, signal } = params;
+    const { config, messages, signal, toolset } = params;
     const client = this.createClient();
-    const stream = await this.createStream(client, config, messages, signal);
+    const finalMessages = toolset
+      ? await this.appendToolContext(client, config, messages, toolset, signal)
+      : messages;
+    const stream = await this.createStream(client, config, finalMessages, signal);
 
     for await (const chunk of stream) {
       const delta = chunk.choices?.[0]?.delta?.content;
@@ -89,6 +96,95 @@ export class OpenAICompatibleProvider implements AIProvider {
         yield delta;
       }
     }
+  }
+
+  /**
+   * Bounded MCP tool rounds (D6): let the model call tools, feed results back,
+   * and fold everything into the prompt so streaming/response_format stay
+   * untouched (D8). Failures degrade to toolless generation (D7).
+   */
+  private async gatherToolContext(
+    client: OpenAI,
+    config: ProviderConfig,
+    messages: AIMessage[],
+    toolset: Toolset,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    const history: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = messages.map(
+      ({ role, content }) => ({ role, content }),
+    );
+    const lines: string[] = [];
+    let executions = 0;
+
+    for (let round = 0; round < TOOL_MAX_ROUNDS; round++) {
+      if (signal?.aborted) break;
+      let completion: OpenAI.Chat.Completions.ChatCompletion;
+      try {
+        completion = await client.chat.completions.create({
+          model: config.model,
+          messages: history,
+          tools: toolset.tools.map((t) => ({ type: "function", function: t.function })),
+          ...(signal ? { signal } : {}),
+        });
+      } catch (error) {
+        if (round === 0) {
+          console.warn(
+            "[mcp] tool round failed, continuing without tools:",
+            error instanceof Error ? error.message : error,
+          );
+        }
+        break;
+      }
+
+      const msg = completion.choices?.[0]?.message;
+      const calls = (msg?.tool_calls ?? []).filter((c): c is Extract<typeof c, { type: "function" }> => "function" in c);
+      if (calls.length === 0) break;
+
+      history.push({
+        role: "assistant",
+        content: msg?.content ?? "",
+        tool_calls: calls,
+      } as OpenAI.Chat.Completions.ChatCompletionMessageParam);
+
+      for (const call of calls) {
+        if (executions >= TOOL_MAX_EXECUTIONS) {
+          history.push({ role: "tool", tool_call_id: call.id, content: "[tool error] tool budget exceeded" });
+          continue;
+        }
+        executions += 1;
+        let args: unknown = {};
+        try {
+          args = call.function.arguments ? JSON.parse(call.function.arguments) : {};
+        } catch {
+          /* pass raw arguments string */
+          args = call.function.arguments;
+        }
+        const result = await toolset.execute(call.function.name, args);
+        history.push({ role: "tool", tool_call_id: call.id, content: result });
+        if (lines.join("\n").length < TOOL_CONTEXT_MAX_CHARS) {
+          lines.push(`- ${call.function.name}: ${result}`);
+        }
+      }
+    }
+
+    return lines.join("\n");
+  }
+
+  private async appendToolContext(
+    client: OpenAI,
+    config: ProviderConfig,
+    messages: AIMessage[],
+    toolset: Toolset,
+    signal?: AbortSignal,
+  ): Promise<AIMessage[]> {
+    const context = await this.gatherToolContext(client, config, messages, toolset, signal);
+    if (!context) return messages;
+    const next = messages.map((m) => ({ ...m }));
+    const lastUser = [...next].reverse().find((m) => m.role === "user");
+    if (lastUser) {
+      lastUser.content = `${lastUser.content}\n\n[Tool results]\n${context}`;
+    }
+    return next;
   }
 
   private async createStream(
@@ -119,8 +215,26 @@ export class OpenAICompatibleProvider implements AIProvider {
   }
 
   async generateContent<T>(params: GenerateContentParams<T>): Promise<T> {
-    const { config, system, prompt, schema, signal, maxRetries = 2 } = params;
+    const { config, system, prompt, schema, signal, maxRetries = 2, toolset } = params;
     let lastError: Error | undefined;
+
+    // Optional MCP tool phase (D6/D7): gather tool results, fold into the prompt.
+    let userPrompt = prompt;
+    if (toolset) {
+      const context = await this.gatherToolContext(
+        this.createClient(),
+        config,
+        [
+          { role: "system", content: system },
+          { role: "user", content: prompt },
+        ],
+        toolset,
+        signal,
+      );
+      if (context) {
+        userPrompt = `${prompt}\n\n[Tool results]\n${context}`;
+      }
+    }
 
     // Structured-output support varies across OpenAI-compatible endpoints:
     // some accept `json_schema`, some only `text` (LM Studio rejects `json_object`).
@@ -138,7 +252,7 @@ export class OpenAICompatibleProvider implements AIProvider {
           model: config.model,
           messages: [
             { role: "system", content: system },
-            { role: "user", content: prompt },
+            { role: "user", content: userPrompt },
           ],
           response_format: responseFormats[formatIndex],
           ...(signal ? { signal } : {}),
