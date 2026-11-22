@@ -93,9 +93,10 @@ export function DeleteBrandDialog({
             className="mt-2 w-full"
             value={typed}
             onChange={(event) => setTyped(event.target.value)}
-            placeholder={brandName}
+            placeholder="Type brand name"
             autoComplete="off"
           />
+          <p className="mt-1.5 text-xs" style={{ color: "var(--muted)" }}>Must match exactly, including capitalization.</p>
         </Field>
         {error && (
           <p className="mt-2 text-sm" style={{ color: "#f87171" }} role="alert">

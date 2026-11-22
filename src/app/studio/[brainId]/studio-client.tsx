@@ -1,15 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { PageChrome } from "@/components/nav";
 import { DeleteBrandDialog } from "@/components/DeleteBrandDialog";
+import { DraftCard, EmptyState } from "@/components/content-widgets";
 import { CONTENT_TEMPLATES } from "@/features/content-dashboard/types";
+import type { ContentItem } from "@/features/content-dashboard/types";
 
 const TIPS = [
   "Each template generates 5 unique variations — captions, image briefs, and sound descriptions matched to each other.",
-  "Pick a goal first: 25 post types from Launch to Meme. Custom lets you describe exactly what you want.",
+  "Pick a goal first: 25 goal types from Launch to Meme. Custom lets you describe exactly what you want.",
   "Generated images come from your own ComfyUI workflows — set them up in Settings → Image Generation.",
 ];
 
@@ -34,6 +36,17 @@ export default function StudioClient() {
   const router = useRouter();
   const brainId = params.brainId;
   const [brandName, setBrandName] = useState("");
+  const [items, setItems] = useState<ContentItem[]>([]);
+  const [itemsLoaded, setItemsLoaded] = useState(false);
+
+  const loadItems = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/content-dashboard?brainId=${encodeURIComponent(brainId)}`, { cache: "no-store" });
+      const data = await res.json() as { items?: ContentItem[] };
+      setItems(data.items ?? []);
+    } catch { /* empty */ }
+    setItemsLoaded(true);
+  }, [brainId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,11 +61,18 @@ export default function StudioClient() {
     return () => { cancelled = true; };
   }, [brainId]);
 
+  useEffect(() => {
+    const t = setTimeout(() => loadItems(), 0);
+    return () => clearTimeout(t);
+  }, [loadItems]);
+
+  const drafts = items.filter((i) => i.status !== "approved");
+
   return (
     <main className="relative min-h-screen">
       <div aria-hidden className="hero-mesh absolute inset-x-0 top-0 h-[380px]" />
       <div aria-hidden className="hero-grid absolute inset-x-0 top-0 h-[380px]" />
-      <PageChrome back={{ href: "/projects", label: "Projects" }} brand={brandName} />
+      <PageChrome back={{ href: "/projects", label: "Your Brands" }} brand={brandName} />
 
       <section className="relative mx-auto max-w-6xl px-8 pb-24 pt-12">
         <div className="flex flex-wrap items-end justify-between gap-4">
@@ -70,7 +90,7 @@ export default function StudioClient() {
                 <rect x="3" y="3" width="18" height="18" rx="3" />
                 <path d="M21 15l-5-5L5 21" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              Brand Workspace
+              Brand page
             </Link>
             <DeleteBrandDialog
               brandName={brandName || "this brand"}
@@ -116,6 +136,35 @@ export default function StudioClient() {
               <div className="text-xs leading-snug" style={{ color: "var(--muted)" }}>{tpl.description}</div>
             </Link>
           ))}
+        </div>
+
+        {/* Draft Insta Posts */}
+        <div className="glass anim-rise mt-10 p-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold" style={{ color: "#fff" }}>Draft Insta Posts</h2>
+            <span className="text-xs" style={{ color: "var(--muted)" }}>{drafts.length} in progress</span>
+          </div>
+          {!itemsLoaded ? (
+            <div className="mt-4 space-y-3">
+              {[0, 1].map((i) => <div key={i} className="glass h-20 animate-pulse" />)}
+            </div>
+          ) : drafts.length === 0 ? (
+            <EmptyState
+              title="No drafts yet"
+              hint="Pick a template above, generate posts, and save them here for finishing touches."
+            />
+          ) : (
+            <div className="mt-4 space-y-3">
+              {drafts.map((item) => (
+                <DraftCard
+                  key={item.id}
+                  item={item}
+                  onChanged={(next) => setItems((prev) => prev.map((i) => (i.id === next.id ? next : i)))}
+                  onDeleted={(id) => setItems((prev) => prev.filter((i) => i.id !== id))}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Tips strip */}

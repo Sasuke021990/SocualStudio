@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { PageChrome } from "@/components/nav";
 import { CONTENT_TEMPLATES } from "@/features/content-dashboard/types";
@@ -20,6 +21,20 @@ function GoalIcon({ id, emoji }: { id: string; emoji: string }) {
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={`/goals/${id}.png?v=2`}
+      alt=""
+      className="h-full w-full object-cover"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+function TemplateIcon({ id, emoji }: { id: string; emoji: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <span className="text-lg">{emoji}</span>;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`/templates/${id}.png?v=2`}
       alt=""
       className="h-full w-full object-cover"
       onError={() => setFailed(true)}
@@ -197,13 +212,47 @@ export default function TemplateClient() {
       <div aria-hidden className="hero-grid absolute inset-x-0 top-0 h-[380px]" />
       <PageChrome back={{ href: `/studio/${brainId}`, label: "Studio" }} brand={brandName} />
 
-      <section className="mx-auto max-w-6xl px-8 pb-24 pt-12">
+      <section className="mx-auto max-w-6xl px-5 pb-24 pt-12 sm:px-8">
+        <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
+          {/* LEFT: pre-template picker */}
+          <aside className="anim-rise">
+            <h2 className="text-sm font-semibold uppercase tracking-widest" style={{ color: "var(--accent-bright)" }}>
+              Templates
+            </h2>
+            <div className="mt-4 flex flex-col gap-2">
+              {CONTENT_TEMPLATES.map((t) => (
+                <Link
+                  key={t.id}
+                  href={`/studio/${brainId}/${t.id}`}
+                  className="glass flex items-center gap-3 p-2.5 transition"
+                  style={t.id === tpl.id ? { borderColor: "var(--accent)", boxShadow: "0 8px 28px -8px var(--accent-glow)" } : undefined}
+                >
+                  <span
+                    className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg text-lg"
+                    style={{
+                      background: "linear-gradient(135deg, rgba(99,102,241,0.18), rgba(168,85,247,0.10))",
+                      border: "1px solid rgba(99,102,241,0.30)",
+                    }}
+                  >
+                    <TemplateIcon id={t.id} emoji={t.icon} />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-xs font-semibold" style={{ color: "#fff" }}>{t.label}</span>
+                    <span className="block text-[11px]" style={{ color: "var(--muted)" }}>{t.platform}</span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </aside>
+
+          {/* RIGHT: generation section */}
+          <div>
         <div className="anim-rise flex items-center gap-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl text-3xl" style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
             {tpl.icon}
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{tpl.label}</h1>
+            <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#fff" }}>{tpl.label}</h1>
             <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>{tpl.platform} · {brandName}</p>
           </div>
         </div>
@@ -212,15 +261,25 @@ export default function TemplateClient() {
         <h2 className="anim-rise anim-rise-1 mt-10 text-sm font-semibold uppercase tracking-widest" style={{ color: "var(--muted)" }}>
           What kind of post do you want?
         </h2>
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7">
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {CONTENT_GOALS.map((g, i) => (
             <button
               key={g.id}
               type="button"
-              className={`glass anim-rise anim-rise-${(i % 4) + 1} flex flex-col items-center gap-2 p-4 text-center transition ${goal?.id === g.id ? "" : "card-hover"}`}
+              aria-pressed={goal?.id === g.id}
+              className={`glass anim-rise anim-rise-${(i % 4) + 1} relative flex flex-col items-center gap-2 p-4 text-center transition ${goal?.id === g.id ? "" : "card-hover"}`}
               style={goal?.id === g.id ? { borderColor: "var(--accent)", boxShadow: "0 8px 28px -8px var(--accent-glow)" } : undefined}
               onClick={() => setGoal(g)}
             >
+              {goal?.id === g.id && (
+                <span
+                  className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                  style={{ background: "var(--accent)" }}
+                  aria-hidden
+                >
+                  ✓
+                </span>
+              )}
               <span
                 className="flex h-16 w-full items-center justify-center overflow-hidden rounded-xl"
                 style={{
@@ -269,7 +328,7 @@ export default function TemplateClient() {
                     <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" opacity="0.25" /><path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" stroke="currentColor" strokeWidth="3" fill="none" /></svg>
                     Generating...
                   </>
-                ) : variations.length === 0 ? "✨ Create 5 Posts" : "🔄 Generate 5 More"}
+                ) : variations.length === 0 ? "Create 5 Posts" : "Generate 5 More"}
               </button>
               {generating && (
                 <button type="button" className="btn-ghost !border-[var(--rose)]" style={{ color: "var(--rose)" }} onClick={() => abortRef.current?.abort()}>
@@ -278,7 +337,7 @@ export default function TemplateClient() {
               )}
               {selectedIds.size > 0 && (
                 <button type="button" className="btn-primary" disabled={saving} onClick={saveSelected}>
-                  {saving ? "Saving..." : saved ? "✓ Saved" : `💾 Save ${selectedIds.size} to Drafts`}
+                  {saving ? "Saving..." : saved ? "✓ Saved" : `Save ${selectedIds.size} to Drafts`}
                 </button>
               )}
               {tools.length > 0 && (
@@ -368,6 +427,8 @@ export default function TemplateClient() {
               </li>
             ))}
           </ul>
+        </div>
+          </div>
         </div>
       </section>
     </main>

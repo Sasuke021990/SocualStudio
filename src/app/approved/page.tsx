@@ -107,13 +107,13 @@ export default function ApprovedPage() {
           <div className="glass-hero mt-12 flex flex-col items-center gap-5 py-20 text-center">
             <p className="text-lg font-semibold" style={{ color: "#fff" }}>No approved posts yet</p>
             <p className="text-sm" style={{ color: "var(--muted)" }}>
-              Approve drafts from a brand workspace and they will collect here.
+              Approve drafts from a brand&apos;s Studio and they will collect here.
             </p>
             <Link href="/projects" className="btn-primary">Go to Your Brands</Link>
           </div>
         ) : (
           <div className="mt-10 space-y-10">
-            {sections.map((section, idx) => (
+            {sections.map((section) => (
               <section key={section.brandName} className="glass anim-rise p-6">
                 <div className="flex flex-wrap items-center gap-4">
                   <div
@@ -159,9 +159,6 @@ export default function ApprovedPage() {
                   {section.items.map((item) => (
                     <ApprovedCard key={item.id} item={item} archived={section.archived} />
                   ))}
-                </div>
-                <div className="mt-4 text-right text-[10px] uppercase tracking-widest" style={{ color: "var(--muted)" }}>
-                  Section {idx + 1} of {sections.length}
                 </div>
               </section>
             ))}

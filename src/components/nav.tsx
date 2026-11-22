@@ -24,8 +24,8 @@ export function GearButton() {
 
 export function BrandChip({ name }: { name: string }) {
   return (
-    <Link href="/projects" className="chip brand-chip anim-rise" title="Back to projects">
-      {name}
+    <Link href="/projects" className="chip brand-chip anim-rise" title="Back to Your Brands">
+      <span className="max-w-[10rem] truncate">{name}</span>
     </Link>
   );
 }
@@ -38,7 +38,7 @@ export function PageChrome({
   brand?: string;
 }) {
   return (
-    <div className="mx-auto flex max-w-6xl items-center justify-between px-8 pt-8">
+    <div className="mx-auto flex max-w-6xl items-center justify-between px-5 pt-8 sm:px-8">
       <div className="flex items-center gap-3">
         {back && <BackPill href={back.href} label={back.label} />}
       </div>

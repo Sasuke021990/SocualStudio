@@ -19,7 +19,7 @@ export default function SettingsPage() {
     <main className="relative min-h-screen">
       <div aria-hidden className="hero-mesh absolute inset-x-0 top-0 h-[380px]" />
       <div aria-hidden className="hero-grid absolute inset-x-0 top-0 h-[380px]" />
-      <PageChrome back={{ href: "/projects", label: "Projects" }} />
+      <PageChrome back={{ href: "/projects", label: "Your Brands" }} />
 
       <section className="relative mx-auto max-w-3xl px-8 pb-24 pt-12">
         <h1 className="anim-rise text-4xl font-bold tracking-tight" style={{ color: "#fff" }}>Settings</h1>

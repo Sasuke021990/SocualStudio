@@ -100,7 +100,7 @@ export default function CreateBrandPage() {
     <main className="relative min-h-screen">
       <div aria-hidden className="hero-mesh absolute inset-x-0 top-0 h-[380px]" />
       <div aria-hidden className="hero-grid absolute inset-x-0 top-0 h-[380px]" />
-      <PageChrome back={{ href: "/projects", label: "Projects" }} />
+      <PageChrome back={{ href: "/projects", label: "Your Brands" }} />
 
       <section className="relative mx-auto max-w-3xl px-8 pb-24 pt-12">
         <h1 className="anim-rise text-4xl font-bold tracking-tight" style={{ color: "#fff" }}>Create New Brand</h1>
@@ -168,7 +168,7 @@ export default function CreateBrandPage() {
               )}
               {sourceType === "file" && (
                 <div>
-                  <input ref={fileInputRef} type="file" accept=".txt,.md,.docx,.doc,.pdf" className="hidden"
+                  <input ref={fileInputRef} type="file" accept=".txt,.md" className="hidden"
                     onChange={async (e) => {
                       const f = e.target.files?.[0];
                       if (!f) return;
@@ -186,14 +186,14 @@ export default function CreateBrandPage() {
                       <path d="M12 16V4m0 0l-4 4m4-4l4 4" strokeLinecap="round" strokeLinejoin="round" />
                       <path d="M20 16.7V19a2 2 0 01-2 2H6a2 2 0 01-2-2v-2.3" strokeLinecap="round" />
                     </svg>
-                    {fileName ? <span style={{ color: "var(--accent-bright)" }}>📎 {fileName}</span> : <span>Click to upload (TXT, MD, DOCX, PDF)</span>}
+                    {fileName ? <span style={{ color: "var(--accent-bright)" }}>📎 {fileName}</span> : <span>Click to upload (TXT, MD)</span>}
                   </button>
                 </div>
               )}
             </div>
 
             <button type="button" className="btn-primary mt-6" disabled={!sourceValue.trim()} onClick={extract}>
-              ✨ Extract Brand Intelligence
+              Extract Brand Intelligence
             </button>
           </div>
         )}
@@ -236,9 +236,9 @@ export default function CreateBrandPage() {
 
             <div className="mt-7 flex gap-3">
               <button type="button" className="btn-primary" disabled={saving || !brand.brandName.trim()} onClick={save}>
-                {saving ? "Saving..." : "💾 Save & Open Studio"}
+                {saving ? "Saving..." : "Save & Open Studio"}
               </button>
-              <button type="button" className="btn-ghost" onClick={() => setView("intake")}>← Re-extract</button>
+              <button type="button" className="btn-ghost" onClick={() => setView("intake")}>← Back to source</button>
             </div>
           </div>
         )}
@@ -260,20 +260,33 @@ function ArrayField({ label, items, onChange }: { label: string; items: string[]
           </span>
         ))}
       </div>
-      <input
-        className="field-input mt-1.5 !text-xs"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
+      <div className="mt-1.5 flex gap-1.5">
+        <input
+          className="field-input mt-0 !text-xs"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              const v = draft.trim();
+              if (v && !items.includes(v)) onChange([...items, v]);
+              setDraft("");
+            }
+          }}
+          placeholder="Add item"
+        />
+        <button
+          type="button"
+          className="btn-ghost shrink-0 px-3 py-2 text-xs"
+          onClick={() => {
             const v = draft.trim();
             if (v && !items.includes(v)) onChange([...items, v]);
             setDraft("");
-          }
-        }}
-        placeholder="Add item (Enter)"
-      />
+          }}
+        >
+          + Add
+        </button>
+      </div>
     </div>
   );
 }

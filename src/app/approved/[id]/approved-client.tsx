@@ -33,7 +33,7 @@ export default function ApprovedClient() {
 
   const selectPost = (item: ContentItem) => {
     setCurrent(item);
-    router.replace(`/approved/${item.id}`);
+    router.push(`/approved/${item.id}`);
   };
 
   const exportWorkspace = async () => {
@@ -59,8 +59,9 @@ export default function ApprovedClient() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <div className="animate-pulse text-zinc-500">Loading approved posts...</div>
+      <main className="relative flex min-h-screen flex-col items-center justify-center gap-4">
+        <div className="glass h-24 w-80 animate-pulse" />
+        <div className="glass h-40 w-80 animate-pulse" />
       </main>
     );
   }
@@ -68,7 +69,7 @@ export default function ApprovedClient() {
   if (!current) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-4">
-        <p className="text-zinc-500">No approved posts.</p>
+        <p style={{ color: "var(--muted)" }}>No approved posts yet.</p>
         <Link href="/approved" className="btn-primary">Back to Approved</Link>
       </main>
     );
@@ -82,21 +83,24 @@ export default function ApprovedClient() {
       <div aria-hidden className="hero-mesh absolute inset-x-0 top-0 h-[380px]" />
       <div aria-hidden className="hero-grid absolute inset-x-0 top-0 h-[380px]" />
       {/* Back nav */}
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-6 pt-8">
+      <div className="mx-auto flex max-w-5xl items-center justify-between px-5 pt-8 sm:px-6">
         <Link
           href="/approved"
-          className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white/60 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:border-violet-300 hover:text-violet-600 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-300"
+          className="back-pill anim-rise"
         >
-          ← Back to Approved
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+            <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Back to Approved
         </Link>
         <div className="flex flex-col items-end gap-1">
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-gradient-to-r from-emerald-500 to-green-600 px-3 py-1 text-xs font-semibold text-white">
+          <div className="flex items-center gap-3">
+            <span className="chip anim-rise">
               ✓ Approved · {current.brandName}
             </span>
             <button
               type="button"
-              className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-500 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:opacity-90 disabled:opacity-60"
+              className="btn-primary cursor-pointer"
               disabled={exporting}
               onClick={exportWorkspace}
             >
@@ -106,19 +110,25 @@ export default function ApprovedClient() {
                   Exporting...
                 </>
               ) : (
-                "📁 Export Workspace Folder"
+                "Export Folder"
               )}
             </button>
+            <Link href="/settings" className="gear-btn anim-rise" aria-label="Settings">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33 1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.08a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            </Link>
           </div>
-          {exportError && <p className="max-w-md text-right text-[11px] text-red-500">{exportError}</p>}
-          {exportResult && <p className="max-w-md text-right text-[11px] text-emerald-600 break-all">{exportResult}</p>}
+          {exportError && <p className="max-w-md text-right text-[11px]" style={{ color: "var(--rose)" }}>{exportError}</p>}
+          {exportResult && <p className="max-w-md break-all text-right text-[11px]" style={{ color: "#34d399" }}>{exportResult}</p>}
         </div>
       </div>
 
       <div className="mx-auto grid max-w-5xl gap-6 px-6 py-8 lg:grid-cols-[260px_1fr]">
         {/* SIDEBAR: approved posts */}
         <aside className="flex flex-col gap-2">
-          <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <h3 className="px-1 text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--accent-bright)" }}>
             Approved Posts ({posts.length})
           </h3>
           <div className="space-y-2">
@@ -127,15 +137,15 @@ export default function ApprovedClient() {
                 key={p.id}
                 type="button"
                 onClick={() => selectPost(p)}
-                className={`w-full rounded-xl border p-3 text-left transition ${
-                  p.id === current.id
-                    ? "border-emerald-400 bg-emerald-50/60 shadow-md dark:border-emerald-600 dark:bg-emerald-950/30"
-                    : "border-zinc-200 bg-white/60 hover:border-emerald-300 dark:border-zinc-700 dark:bg-zinc-900/60"
-                }`}
+                className="glass w-full cursor-pointer p-3 text-left transition"
+                style={p.id === current.id ? { borderColor: "#34d399", boxShadow: "0 8px 28px -8px rgba(52,211,153,0.35)" } : undefined}
               >
-                <div className="truncate text-xs font-medium text-zinc-900 dark:text-zinc-50">{p.title}</div>
-                <div className="mt-1 flex items-center gap-1 text-[10px] text-zinc-500">
-                  <span className="rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-1.5 py-0.5 font-semibold text-white">
+                <div className="truncate text-xs font-medium" style={{ color: "#fff" }}>{p.title}</div>
+                <div className="mt-1 flex items-center gap-1 text-[11px]" style={{ color: "var(--muted)" }}>
+                  <span
+                    className="rounded-full px-1.5 py-0.5 font-semibold text-white"
+                    style={{ background: "linear-gradient(120deg, var(--accent), #a855f7)" }}
+                  >
                     {p.brandName}
                   </span>
                   {p.platform}
@@ -158,7 +168,7 @@ export default function ApprovedClient() {
             <div className="relative flex aspect-square items-center justify-center overflow-hidden" style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}>
               {v?.generatedImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={v.generatedImage} alt="post" className="absolute inset-0 h-full w-full object-cover" />
+                <img src={v.generatedImage} alt={current.title} className="absolute inset-0 h-full w-full object-cover" />
               ) : (
                 <div className="relative z-10 px-6 text-center text-white">
                   <div className="text-4xl">📸</div>
@@ -174,9 +184,6 @@ export default function ApprovedClient() {
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8" className="ml-auto"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
 
-            <div className="px-3.5 pb-1">
-              <p className="text-[13px] font-semibold" style={{ color: "#262626" }}>248 likes</p>
-            </div>
             <div className="px-3.5 pb-2">
               <p className="text-[13px] leading-[18px]" style={{ color: "#262626" }}>
                 <span className="font-semibold">{handle}</span> {v?.caption ?? current.title}

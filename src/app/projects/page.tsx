@@ -48,19 +48,18 @@ export default function ProjectsPage() {
     <main className="relative min-h-screen">
       <div aria-hidden className="hero-mesh absolute inset-x-0 top-0 h-[380px]" />
       <div aria-hidden className="hero-grid absolute inset-x-0 top-0 h-[380px]" />
-      <PageChrome back={{ href: "/", label: "Landing" }} />
+      <PageChrome back={{ href: "/", label: "Home" }} />
 
-      <section className="relative mx-auto max-w-6xl px-8 pb-24 pt-12">
+      <section className="relative mx-auto max-w-6xl px-5 pb-24 pt-12 sm:px-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="anim-rise text-4xl font-bold tracking-tight" style={{ color: "#fff" }}>Your Brands</h1>
             <p className="anim-rise anim-rise-1 mt-2" style={{ color: "var(--muted)" }}>
-              Select a brand to open its workspace, or create a new one.
+              Select a brand to open its Studio, or create a new one.
             </p>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="btn-ghost anim-rise anim-rise-2">Dashboard</Link>
-            <Link href="/approved" className="btn-ghost anim-rise anim-rise-2">Approved</Link>
             <Link href="/projects/new" className="btn-primary anim-rise anim-rise-2">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
                 <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -103,7 +102,7 @@ export default function ProjectsPage() {
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {projects.map((p, i) => (
               <div key={`${p.brainId}-${p.fileName}`} className={`glass card-hover anim-rise anim-rise-${(i % 4) + 1} flex items-center gap-4 p-5`}>
-                <Link href={`/brand/${p.brainId}`} className="flex min-w-0 flex-1 cursor-pointer items-center gap-4">
+                <Link href={`/studio/${p.brainId}`} className="flex min-w-0 flex-1 cursor-pointer items-center gap-4">
                   <div
                     className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-lg font-bold text-white"
                     style={{
@@ -125,11 +124,11 @@ export default function ProjectsPage() {
                 </Link>
                 <div className="flex shrink-0 flex-col items-end gap-2">
                   <Link
-                    href={`/studio/${p.brainId}`}
+                    href={`/brand/${p.brainId}`}
                     className="text-xs transition-colors duration-200 hover:underline"
                     style={{ color: "var(--accent-bright)" }}
                   >
-                    Studio
+                    Brand page
                   </Link>
                   <DeleteBrandDialog
                     brandName={p.heading}

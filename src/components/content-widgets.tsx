@@ -36,15 +36,17 @@ export function StatCard({
   );
 }
 
-export function MetaChips({ item, archived }: { item: ContentItem; archived?: boolean }) {
+export function MetaChips({ item, archived, hideBrand }: { item: ContentItem; archived?: boolean; hideBrand?: boolean }) {
   return (
     <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs" style={{ color: "var(--muted)" }}>
-      <span
-        className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-white"
-        style={{ background: "linear-gradient(120deg, var(--accent), #a855f7)" }}
-      >
-        {item.brandName}{archived ? " · archived" : ""}
-      </span>
+      {!hideBrand && (
+        <span
+          className="rounded-full px-2 py-0.5 text-[11px] font-semibold text-white"
+          style={{ background: "linear-gradient(120deg, var(--accent), #a855f7)" }}
+        >
+          {item.brandName}{archived ? " · archived" : ""}
+        </span>
+      )}
       <span>{item.platform}</span>
       <span>·</span>
       <span>{new Date(item.createdAt).toLocaleDateString()}</span>
@@ -145,7 +147,7 @@ export function DraftCard({
               <p className="mt-2 line-clamp-2 text-xs leading-relaxed" style={{ color: "var(--muted)" }}>{item.output}</p>
             </>
           )}
-          {error && <p className="mt-2 text-xs" style={{ color: "#f87171" }} role="alert">{error}</p>}
+          {error && <p className="mt-2 text-xs" style={{ color: "var(--rose)" }} role="alert">{error}</p>}
         </div>
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -166,11 +168,11 @@ export function DraftCard({
             <button type="button" className="btn-ghost cursor-pointer px-4 py-2 text-xs transition-colors duration-200" disabled={busy} onClick={() => setEditing(true)}>
               Edit
             </button>
-            <button type="button" className="btn-ghost cursor-pointer px-4 py-2 text-xs transition-colors duration-200" style={{ color: "#f87171" }} disabled={busy} onClick={remove}>
+            <button type="button" className="btn-ghost cursor-pointer px-4 py-2 text-xs transition-colors duration-200" style={{ color: "var(--rose)" }} disabled={busy} onClick={remove}>
               Delete
             </button>
             <Link href={`/workspace/${item.id}`} className="ml-auto text-xs transition-colors duration-200 hover:underline" style={{ color: "var(--accent-bright)" }}>
-              Open in Workspace →
+              Open in Editor →
             </Link>
           </>
         )}
@@ -179,7 +181,7 @@ export function DraftCard({
   );
 }
 
-export function ApprovedCard({ item, archived }: { item: ContentItem; archived?: boolean }) {
+export function ApprovedCard({ item, archived, hideBrand }: { item: ContentItem; archived?: boolean; hideBrand?: boolean }) {
   return (
     <Link
       href={`/approved/${item.id}`}
@@ -187,7 +189,7 @@ export function ApprovedCard({ item, archived }: { item: ContentItem; archived?:
     >
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-semibold" style={{ color: "#fff" }}>{item.title}</div>
-        <MetaChips item={item} archived={archived} />
+        <MetaChips item={item} archived={archived} hideBrand={hideBrand} />
       </div>
       <span className="shrink-0 text-xs font-semibold" style={{ color: "#34d399" }}>✓ Approved</span>
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--accent-bright)" strokeWidth="1.8" aria-hidden>

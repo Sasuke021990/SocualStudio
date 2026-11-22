@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { PageChrome } from "@/components/nav";
 import { DeleteBrandDialog } from "@/components/DeleteBrandDialog";
-import { StatCard, DraftCard, EmptyState } from "@/components/content-widgets";
+import { StatCard, ApprovedCard, EmptyState } from "@/components/content-widgets";
 import type { ContentItem } from "@/features/content-dashboard/types";
 
 interface ProjectEntry {
@@ -22,6 +22,7 @@ export default function BrandClient() {
   const brainId = params.brainId;
   const [brand, setBrand] = useState<ProjectEntry | null>(null);
   const [items, setItems] = useState<ContentItem[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -34,6 +35,7 @@ export default function BrandClient() {
       setBrand(projData.projects?.find((p) => p.brainId === brainId) ?? null);
       setItems(itemData.items ?? []);
     } catch { /* empty */ }
+    setLoaded(true);
   }, [brainId]);
 
   useEffect(() => {
@@ -41,7 +43,7 @@ export default function BrandClient() {
     return () => clearTimeout(t);
   }, [load]);
 
-  const drafts = items.filter((i) => i.status !== "approved");
+  const approved = items.filter((i) => i.status === "approved");
   const heading = brand?.heading ?? "Brand";
 
   const deleteBrand = async () => {
@@ -61,14 +63,14 @@ export default function BrandClient() {
       <div aria-hidden className="hero-grid absolute inset-x-0 top-0 h-[380px]" />
       <PageChrome back={{ href: "/dashboard", label: "Dashboard" }} brand={heading} />
 
-      <section className="relative mx-auto max-w-6xl px-8 pb-24 pt-12">
+      <section className="relative mx-auto max-w-6xl px-5 pb-24 pt-12 sm:px-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <Link href={`/studio/${brainId}`} className="anim-rise text-4xl font-bold tracking-tight" style={{ color: "#fff" }}>
               {heading}
             </Link>
             <p className="anim-rise anim-rise-1 mt-2" style={{ color: "var(--muted)" }}>
-              Everything for this brand — drafts to finish, creation tools, and one click to the full picture.
+              Approved posts for this brand — ready to publish manually.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -89,16 +91,16 @@ export default function BrandClient() {
           </div>
         </div>
 
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <StatCard label="Posts" value={items.length} delay={1}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
               <rect x="3" y="3" width="18" height="18" rx="3" />
               <path d="M21 15l-5-5L5 21" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </StatCard>
-          <StatCard label="Drafts" value={drafts.length} delay={2}>
+          <StatCard label="Approved" value={approved.length} delay={2}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-              <path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </StatCard>
         </div>
@@ -117,33 +119,44 @@ export default function BrandClient() {
           <div>
             <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--accent-bright)" }}>Workflow</div>
             <div className="mt-1 text-sm" style={{ color: "var(--muted)" }}>
-              Generate in Studio → finish in Workspace → approve in Approved → publish manually.
+              Generate in Studio → finish & approve in the Editor → collect here → publish manually.
             </div>
           </div>
           <Link href={`/studio/${brainId}`} className="btn-ghost ml-auto">Create content</Link>
         </div>
 
-        {/* Draft Insta Posts */}
+        {/* Approved Insta Posts */}
         <div className="glass anim-rise mt-8 p-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold" style={{ color: "#fff" }}>Draft Insta Posts</h2>
-            <span className="text-xs" style={{ color: "var(--muted)" }}>{drafts.length} in progress</span>
+            <h2 className="flex items-center gap-2 text-base font-semibold" style={{ color: "#fff" }}>
+              <span
+                className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                style={{ background: "#10b981" }}
+              >
+                ✓
+              </span>
+              Approved Insta Posts
+            </h2>
+            {approved.length > 0 && (
+              <Link href="/approved" className="text-xs transition-colors duration-200 hover:underline" style={{ color: "var(--accent-bright)" }}>
+                All approved posts →
+              </Link>
+            )}
           </div>
-          {drafts.length === 0 ? (
+          {!loaded ? (
+            <div className="mt-4 space-y-3">
+              {[0, 1].map((i) => <div key={i} className="glass h-20 animate-pulse" />)}
+            </div>
+          ) : approved.length === 0 ? (
             <EmptyState
-              title="No drafts yet"
-              hint="Generate posts in the Studio and save them here for finishing touches."
+              title="No approved posts yet"
+              hint="Generate in the Studio, finish in the Editor, and approve — approved posts collect here."
               action={<Link href={`/studio/${brainId}`} className="btn-primary">Open Studio</Link>}
             />
           ) : (
             <div className="mt-4 space-y-3">
-              {drafts.map((item) => (
-                <DraftCard
-                  key={item.id}
-                  item={item}
-                  onChanged={(next) => setItems((prev) => prev.map((i) => (i.id === next.id ? next : i)))}
-                  onDeleted={(id) => setItems((prev) => prev.filter((i) => i.id !== id))}
-                />
+              {approved.map((item) => (
+                <ApprovedCard key={item.id} item={item} hideBrand />
               ))}
             </div>
           )}

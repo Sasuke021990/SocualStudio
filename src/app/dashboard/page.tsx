@@ -67,14 +67,14 @@ export default function DashboardPage() {
     <main className="relative min-h-screen">
       <div aria-hidden className="hero-mesh absolute inset-x-0 top-0 h-[380px]" />
       <div aria-hidden className="hero-grid absolute inset-x-0 top-0 h-[380px]" />
-      <PageChrome back={{ href: "/", label: "Landing" }} />
+      <PageChrome back={{ href: "/", label: "Home" }} />
 
       <section className="relative mx-auto max-w-6xl px-8 pb-24 pt-12">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="anim-rise text-4xl font-bold tracking-tight" style={{ color: "#fff" }}>Command Dashboard</h1>
             <p className="anim-rise anim-rise-1 mt-2" style={{ color: "var(--muted)" }}>
-              Every brand at a glance — approved posts ready to publish, and one click to the full picture.
+              Every brand at a glance — approved posts ready to publish, and quick access to each brand.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -144,15 +144,15 @@ export default function DashboardPage() {
                 <div className="mt-5 grid grid-cols-2 gap-2 text-center">
                   <div className="rounded-xl py-2" style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)" }}>
                     <div className="text-lg font-bold" style={{ color: "#fff" }}>{b.total}</div>
-                    <div className="text-[10px] uppercase tracking-widest" style={{ color: "var(--muted)" }}>Posts</div>
+                    <div className="text-[11px] uppercase tracking-widest" style={{ color: "var(--muted)" }}>Posts</div>
                   </div>
                   <div className="rounded-xl py-2" style={{ background: "rgba(52,211,153,0.10)", border: "1px solid rgba(52,211,153,0.25)" }}>
                     <div className="text-lg font-bold" style={{ color: "#fff" }}>{b.approved}</div>
-                    <div className="text-[10px] uppercase tracking-widest" style={{ color: "var(--muted)" }}>Approved</div>
+                    <div className="text-[11px] uppercase tracking-widest" style={{ color: "var(--muted)" }}>Approved</div>
                   </div>
                 </div>
                 <div className="mt-4 flex items-center justify-end gap-1 text-xs" style={{ color: "var(--accent-bright)" }}>
-                  Open brand workspace
+                  Open brand page
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
                     <path d="M6 3l5 5-5 5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
@@ -161,16 +161,6 @@ export default function DashboardPage() {
             ))}
           </div>
         )}
-
-        <div className="glass anim-rise mt-12 p-6">
-          <h3 className="text-sm font-semibold uppercase tracking-widest" style={{ color: "var(--accent-bright)" }}>Quick actions</h3>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Link href="/projects" className="btn-ghost">Your Brands</Link>
-            <Link href="/approved" className="btn-ghost">Approved Posts</Link>
-            <Link href="/projects/new" className="btn-ghost">New Brand</Link>
-            <Link href="/settings" className="btn-ghost">Settings</Link>
-          </div>
-        </div>
       </section>
     </main>
   );

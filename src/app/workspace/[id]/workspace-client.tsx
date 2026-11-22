@@ -129,7 +129,7 @@ export default function WorkspaceClient() {
       body: JSON.stringify({ id, status: "approved" as ContentStatus }),
     });
     setSaving(false);
-    router.push("/?step=generate");
+    router.push("/approved");
   };
 
   const generateImage = async () => {
@@ -216,8 +216,8 @@ export default function WorkspaceClient() {
   if (!item) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-4">
-        <p className="text-zinc-500">Post not found.</p>
-        <Link href="/" className="btn-primary">Back to Dashboard</Link>
+        <p style={{ color: "var(--muted)" }}>Post not found.</p>
+        <Link href="/dashboard" className="btn-primary">Back to Dashboard</Link>
       </main>
     );
   }
@@ -231,10 +231,13 @@ export default function WorkspaceClient() {
       {/* Back nav — the ONLY chrome on this page */}
       <div className="mx-auto flex max-w-5xl items-center justify-between px-6 pt-8">
         <Link
-          href="/?step=generate"
-          className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white/60 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:border-violet-300 hover:text-violet-600 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-300"
+          href={item.brainId ? `/studio/${item.brainId}` : "/projects"}
+          className="back-pill"
         >
-          ← Back to Dashboard
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+            <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Back to Studio
         </Link>
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 py-1 text-xs font-semibold text-white">
@@ -259,7 +262,7 @@ export default function WorkspaceClient() {
             <div className="relative flex aspect-square items-center justify-center overflow-hidden" style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}>
               {image ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={image.url} alt="post" className="absolute inset-0 h-full w-full object-cover" />
+                <img src={image.url} alt={item.title} className="absolute inset-0 h-full w-full object-cover" />
               ) : (
                 <div className="relative z-10 flex w-full flex-col items-center gap-2 px-4 text-center">
                   <div className="text-4xl">📸</div>
@@ -279,7 +282,7 @@ export default function WorkspaceClient() {
                 disabled={generatingImage || (anyGenerating && !generatingImage)}
                 onClick={generateImage}
               >
-                {generatingImage ? "Generating image..." : image ? "🔄 Regenerate Image" : "🎨 Generate Image"}
+                {generatingImage ? "Generating image..." : image ? "Regenerate Image" : "Generate Image"}
               </button>
               {imageError && <div className="absolute bottom-12 left-3 right-3 z-20 rounded-lg bg-red-500/90 px-3 py-1.5 text-[10px] text-white">{imageError}</div>}
             </div>
@@ -292,9 +295,6 @@ export default function WorkspaceClient() {
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8" className="ml-auto"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
 
-            <div className="px-3.5 pb-1">
-              <p className="text-[13px] font-semibold" style={{ color: "#262626" }}>248 likes</p>
-            </div>
             <div className="px-3.5 pb-2">
               <p className="text-[13px] leading-[18px]" style={{ color: "#262626" }}>
                 <span className="font-semibold">{handle}</span> {caption}
@@ -337,7 +337,7 @@ export default function WorkspaceClient() {
                       className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${toolId === t.id ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white" : "border border-zinc-200 text-zinc-600 hover:border-teal-300 dark:border-zinc-700 dark:text-zinc-400"}`}
                       onClick={() => setToolId(t.id)}
                     >
-                      🎨 {t.name}
+                      {t.name}
                     </button>
                   ))}
                 </div>
@@ -362,7 +362,7 @@ export default function WorkspaceClient() {
                 disabled={generatingAudio || !voices.length || (anyGenerating && !generatingAudio)}
                 onClick={generateVoice}
               >
-                {generatingAudio ? "..." : "🎙️ Voice-over"}
+                {generatingAudio ? "..." : "Voice-over"}
               </button>
               {audio && (
                 <button
@@ -384,7 +384,7 @@ export default function WorkspaceClient() {
                 disabled={generatingSfx || (anyGenerating && !generatingSfx)}
                 onClick={generateSound}
               >
-                {generatingSfx ? "Generating sound..." : "🎵 Generate Sound"}
+                {generatingSfx ? "Generating sound..." : "Generate Sound"}
               </button>
               {sfx?.soundPrompt && <p className="mt-1 text-[9px] italic text-zinc-400">{sfx.soundPrompt}</p>}
               {sfxError && <p className="mt-1 text-[10px] text-red-500">{sfxError}</p>}
@@ -461,7 +461,7 @@ export default function WorkspaceClient() {
 
           <div className="flex gap-3">
             <button type="button" className="btn-primary flex-1" disabled={saving} onClick={save}>
-              {saving ? "Saving..." : savedFlash ? "✓ Saved!" : "💾 Save"}
+              {saving ? "Saving..." : savedFlash ? "✓ Saved!" : "Save"}
             </button>
             <button
               type="button"
