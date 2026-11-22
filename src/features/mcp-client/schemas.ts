@@ -18,7 +18,7 @@ export const mcpServerInputSchema = z
       if (!val.command) {
         ctx.addIssue({ code: "custom", message: "Command is required for stdio servers", path: ["command"] });
       }
-    } else if (!val.url) {
+    } else if (val.transport === "http" && !val.url) {
       ctx.addIssue({ code: "custom", message: "URL is required for HTTP servers", path: ["url"] });
     }
   });

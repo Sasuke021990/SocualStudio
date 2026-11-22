@@ -6,12 +6,14 @@ import { ProviderSettingsForm } from "@/features/ai-provider/components/Provider
 import { WorkspaceSetup } from "@/features/workspace-config/components/WorkspaceSetup";
 import { VoiceSetup } from "@/features/voice/components/VoiceSetup";
 import { ComfyUISetup } from "@/features/comfyui/components/ComfyUISetup";
+import { McpSetup } from "@/features/mcp/components/McpSetup";
 
 const TIPS = [
   "Local providers (LM Studio / Ollama) work with a blank or dummy API key — only OpenAI needs a real key.",
   "Models load automatically after saving a provider — pick any installed model from the dropdown.",
   "Voice cloning needs 5–30 seconds of clear speech. Presets work instantly without any upload.",
   "Export folder holds one subfolder per post: image, voice, sound, caption, README.",
+  "MCP servers add external tools to your AI pipeline — choose per stage where they can be used.",
 ];
 
 export default function SettingsPage() {
@@ -24,7 +26,7 @@ export default function SettingsPage() {
       <section className="relative mx-auto max-w-3xl px-8 pb-24 pt-12">
         <h1 className="anim-rise text-4xl font-bold tracking-tight" style={{ color: "#fff" }}>Settings</h1>
         <p className="anim-rise anim-rise-1 mt-2" style={{ color: "var(--muted)" }}>
-          Everything Social Studio needs to generate content: AI provider, workspace, voice, and image generation.
+          Everything Social Studio needs to generate content: AI provider, workspace, voice, image generation, and MCP tools.
         </p>
 
         <Tabs defaultValue="provider" >
@@ -33,6 +35,7 @@ export default function SettingsPage() {
             <TabsTab value="workspace">Workspace</TabsTab>
             <TabsTab value="voice">Voice Setup</TabsTab>
             <TabsTab value="comfyui">Image Generation</TabsTab>
+            <TabsTab value="mcp">MCP</TabsTab>
           </TabsList>
 
           <TabsPanel value="provider">
@@ -46,6 +49,9 @@ export default function SettingsPage() {
           </TabsPanel>
           <TabsPanel value="comfyui">
             <div className="anim-rise mt-6"><ComfyUISetup /></div>
+          </TabsPanel>
+          <TabsPanel value="mcp">
+            <div className="anim-rise mt-6"><McpSetup /></div>
           </TabsPanel>
         </Tabs>
 

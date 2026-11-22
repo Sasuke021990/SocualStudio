@@ -152,6 +152,24 @@ export function IconSpark({ size, className }: { size?: number | string; classNa
   );
 }
 
+export function IconPlug({ size, className }: { size?: number | string; className?: string }) {
+  return (
+    <Svg size={size} className={className}>
+      <path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 01-5 5 5 5 0 01-5-5V8zM12 16v6" />
+    </Svg>
+  );
+}
+
+export function IconServer({ size, className }: { size?: number | string; className?: string }) {
+  return (
+    <Svg size={size} className={className}>
+      <rect x="3" y="4" width="18" height="7" rx="2" />
+      <rect x="3" y="13" width="18" height="7" rx="2" />
+      <path d="M7 7.5h.01M7 16.5h.01" />
+    </Svg>
+  );
+}
+
 export function IconTarget({ size, className }: { size?: number | string; className?: string }) {
   return (
     <Svg size={size} className={className}>
