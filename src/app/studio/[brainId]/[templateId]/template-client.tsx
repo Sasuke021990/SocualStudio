@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { PageChrome } from "@/components/nav";
 import { GoalIcon, TemplateIcon } from "@/components/icons";
@@ -13,6 +13,38 @@ import { useGenerationLocked } from "@/features/content-dashboard/useGenerationL
 
 interface Voice { id: string; name: string; kind: string }
 interface Tool { id: string; name: string }
+
+/* MCP per-run preference — tiny external store (localStorage-backed) so the
+   value hydrates cleanly and no setState-in-effect is needed. */
+const MCP_PREF_KEY = "ss:template-use-mcp";
+const mcpListeners = new Set<() => void>();
+let mcpCache: boolean | null = null;
+
+function readMcpPref(): boolean {
+  if (mcpCache === null) {
+    try {
+      mcpCache = window.localStorage.getItem(MCP_PREF_KEY) !== "0";
+    } catch {
+      mcpCache = true;
+    }
+  }
+  return mcpCache;
+}
+
+function writeMcpPref(next: boolean) {
+  mcpCache = next;
+  try {
+    window.localStorage.setItem(MCP_PREF_KEY, next ? "1" : "0");
+  } catch { /* storage unavailable */ }
+  mcpListeners.forEach((listener) => listener());
+}
+
+function subscribeMcpPref(listener: () => void) {
+  mcpListeners.add(listener);
+  return () => {
+    mcpListeners.delete(listener);
+  };
+}
 
 export default function TemplateClient() {
   const params = useParams<{ brainId: string; templateId: string }>();
@@ -61,6 +93,10 @@ export default function TemplateClient() {
     setMediaMap((prev) => ({ ...prev, [id]: { ...prev[id], ...media } }));
   }, []);
 
+  // MCP per-run preference (per-run override; persists across sessions)
+  const useMcp = useSyncExternalStore(subscribeMcpPref, readMcpPref, () => true);
+  const toggleMcp = useCallback(() => writeMcpPref(!readMcpPref()), []);
+
   const generate = async () => {
     if (!tpl || !goal || generating) return;
     if (goal.id === "custom" && !customGoalTextReady()) return;
@@ -85,6 +121,7 @@ export default function TemplateClient() {
           contentType: tpl.label,
           count: 5,
           goalPrompt,
+          useMcp,
         }),
       });
       if (!res.ok) {
@@ -274,6 +311,23 @@ export default function TemplateClient() {
                   </>
                 ) : variations.length === 0 ? "Create 5 Posts" : "Generate 5 More"}
               </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={useMcp}
+                  aria-label="Use MCP tools for this batch"
+                  onClick={toggleMcp}
+                  className={`relative h-5 w-9 shrink-0 cursor-pointer rounded-full transition ${useMcp ? "bg-indigo-500" : "bg-zinc-300 dark:bg-zinc-700"}`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${useMcp ? "left-[18px]" : "left-0.5"}`}
+                  />
+                </button>
+                <span className="text-xs font-medium" style={{ color: useMcp ? "var(--accent-bright)" : "var(--muted)" }}>
+                  MCP
+                </span>
+              </div>
               {generating && (
                 <button type="button" className="btn-ghost !border-[var(--rose)]" style={{ color: "var(--rose)" }} onClick={() => abortRef.current?.abort()}>
                   ■ Stop
