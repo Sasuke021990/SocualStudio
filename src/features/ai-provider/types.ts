@@ -42,6 +42,8 @@ export interface GenerateContentParams<T> {
   prompt: string;
   signal?: AbortSignal;
   maxRetries?: number;
+  /** Output token cap — generous default keeps JSON outputs from truncating. */
+  maxTokens?: number;
   schema: ZodType<T>;
   toolset?: Toolset;
 }

@@ -215,7 +215,7 @@ export class OpenAICompatibleProvider implements AIProvider {
   }
 
   async generateContent<T>(params: GenerateContentParams<T>): Promise<T> {
-    const { config, system, prompt, schema, signal, maxRetries = 2, toolset } = params;
+    const { config, system, prompt, schema, signal, maxRetries = 2, maxTokens = 4096, toolset } = params;
     let lastError: Error | undefined;
 
     // Optional MCP tool phase (D6/D7): gather tool results, fold into the prompt.
@@ -250,6 +250,7 @@ export class OpenAICompatibleProvider implements AIProvider {
       try {
         const completion = await this.createClient().chat.completions.create({
           model: config.model,
+          max_tokens: maxTokens,
           messages: [
             { role: "system", content: system },
             { role: "user", content: userPrompt },
