@@ -78,10 +78,10 @@ export default function LandingPage() {
       {/* Ambient hero backdrop: layered glass panels + stronger mesh */}
       <div aria-hidden className="hero-grid absolute inset-x-0 top-0 h-[720px]" />
       <div aria-hidden className="hero-mesh anim-ambient absolute inset-x-0 top-0 h-[720px]" />
-      <div aria-hidden className="glass-hero anim-rise absolute left-[8%] top-[120px] h-[280px] w-[220px] rotate-[-8deg] opacity-60" />
-      <div aria-hidden className="glass-hero anim-rise anim-rise-2 absolute right-[10%] top-[90px] h-[240px] w-[190px] rotate-[7deg] opacity-60" />
-      <div aria-hidden className="glass-hero anim-rise anim-rise-3 absolute left-[18%] top-[320px] h-[160px] w-[140px] rotate-[4deg] opacity-35" />
-      <div aria-hidden className="glass-hero anim-rise anim-rise-4 absolute right-[20%] top-[340px] h-[140px] w-[130px] rotate-[-5deg] opacity-35" />
+      <div aria-hidden className="glass-hero anim-rise pointer-events-none absolute left-[8%] top-[120px] h-[280px] w-[220px] rotate-[-8deg] opacity-60" />
+      <div aria-hidden className="glass-hero anim-rise anim-rise-2 pointer-events-none absolute right-[10%] top-[90px] h-[240px] w-[190px] rotate-[7deg] opacity-60" />
+      <div aria-hidden className="glass-hero anim-rise anim-rise-3 pointer-events-none absolute left-[18%] top-[320px] h-[160px] w-[140px] rotate-[4deg] opacity-35" />
+      <div aria-hidden className="glass-hero anim-rise anim-rise-4 pointer-events-none absolute right-[20%] top-[340px] h-[140px] w-[130px] rotate-[-5deg] opacity-35" />
 
       {/* Hero */}
       <header className="relative mx-auto flex max-w-4xl flex-col items-center px-8 pb-16 pt-36 text-center">

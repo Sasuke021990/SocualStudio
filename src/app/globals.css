@@ -438,6 +438,7 @@ a, button, [role="button"], summary, label[for], select {
     radial-gradient(ellipse 55% 50% at 25% 25%, rgba(99, 102, 241, 0.32), transparent),
     radial-gradient(ellipse 50% 45% at 78% 65%, rgba(168, 85, 247, 0.24), transparent),
     radial-gradient(ellipse 45% 40% at 55% 15%, rgba(45, 212, 191, 0.14), transparent);
+  pointer-events: none;
 }
 
 .hero-grid {
@@ -447,6 +448,7 @@ a, button, [role="button"], summary, label[for], select {
   background-size: 48px 48px;
   mask-image: radial-gradient(ellipse 85% 65% at 50% 30%, black 30%, transparent 75%);
   -webkit-mask-image: radial-gradient(ellipse 85% 65% at 50% 30%, black 30%, transparent 75%);
+  pointer-events: none;
 }
 
 /* ── Legacy compat (classic studio + transitional pages) ── */
