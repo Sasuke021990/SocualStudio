@@ -39,6 +39,10 @@ export interface ContentItem {
     generatedImage?: string | null;
     voiceAudio?: string | null;
     sfxAudio?: string | null;
+    /** Approved reel plan (ReelSpec) — see features/reel. */
+    reelSpec?: import("@/features/reel/schemas").ReelSpec;
+    /** Rendered reel metadata — files live in the reel staging dir until post deletion. */
+    reel?: { videoFile: string; imageFiles: string[]; createdAt: string };
   };
   createdAt: string;
   updatedAt: string;

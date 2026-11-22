@@ -11,7 +11,7 @@ export const reelSpecSchema = z
     /** Spoken narration — also the on-screen captions. */
     narration: z.string().min(30).max(600),
     /** One visual brief per image, following the narration beats. */
-    imageBriefs: z.array(z.string().min(5).max(300)).min(1).max(3),
+    imageBriefs: z.array(z.string().min(5).max(500)).min(1).max(3),
     /** Optional end-card text (shown in the last 20% of the reel). */
     cta: z.string().min(1).max(40).optional(),
     /** Mood hint for background music. */

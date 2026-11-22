@@ -3,7 +3,8 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { McpServerConfig } from "./types";
 
-const TOOL_TIMEOUT_MS = 30_000;
+// Renders/exports can run for minutes; ordinary calls return in milliseconds.
+const TOOL_TIMEOUT_MS = 600_000;
 const CONNECT_TIMEOUT_MS = 15_000;
 
 export interface McpConnection {

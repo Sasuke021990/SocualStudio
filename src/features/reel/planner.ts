@@ -60,16 +60,29 @@ RULES:
 - Narration: ${words} words total. Emotional over informational (aspiration, surprise, relatability).
 - Sentences ARE the captions: spoken text, verbatim, no emojis, no stage directions.
 - Self-score your hook 1–10 on "would a stranger stop scrolling?" Be honest.
-- imageBriefs: exactly ${input.imageCount} visual briefs, one per time slice, following the narration beats (hook visual → story → payoff). Each brief: subject, setting, light, mood, vertical composition. Photographic, consistent style across briefs.
+- imageBriefs: a JSON array of exactly ${input.imageCount} NON-EMPTY strings (never "", never null) — one visual brief per time slice, following the narration beats (hook visual → story → payoff). Each brief: subject, setting, light, mood, vertical composition — under 40 words. Photographic, consistent style across briefs.
 - musicMood: 2–5 words describing the background music vibe.
 - cta: max 3 words or omit it.
 - No placeholders, no numbering, no markdown — plain prose only.`;
 }
 
+function clampText(text: string, max: number): string {
+  const t = text.trim().replace(/\s+/g, " ");
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  return (cut.slice(0, cut.lastIndexOf(" ")).trim() || cut.trim()).slice(0, max);
+}
+
+const clampBrief = (text: string) => clampText(text, 480);
+
 function assemble(input: PlanReelInput, creative: Creative): ReelSpec {
-  const briefs = creative.imageBriefs.slice(0, input.imageCount);
+  const cleaned = creative.imageBriefs
+    .filter((b): b is string => typeof b === "string")
+    .map(clampBrief)
+    .filter((b) => b.length >= 5);
+  const briefs = cleaned.slice(0, input.imageCount);
   while (briefs.length < input.imageCount) {
-    briefs.push(creative.imageBriefs[0] ?? "vertical cinematic still, consistent style");
+    briefs.push(`vertical cinematic 9:16 still, story scene ${briefs.length + 1}, consistent lighting and mood`);
   }
   return reelSpecSchema.parse({
     version: 1,
@@ -77,8 +90,8 @@ function assemble(input: PlanReelInput, creative: Creative): ReelSpec {
     imageCount: input.imageCount,
     narration: creative.narration.trim(),
     imageBriefs: briefs,
-    ...(creative.cta?.trim() ? { cta: creative.cta.trim() } : {}),
-    ...(creative.musicMood?.trim() ? { musicMood: creative.musicMood.trim() } : {}),
+    ...(creative.cta?.trim() ? { cta: clampText(creative.cta, 40) } : {}),
+    ...(creative.musicMood?.trim() ? { musicMood: clampText(creative.musicMood, 80) } : {}),
   });
 }
 
