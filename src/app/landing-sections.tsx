@@ -1,13 +1,5 @@
 "use client";
 
-import {
-  Accordion,
-  AccordionHeader,
-  AccordionItem,
-  AccordionPanel,
-  AccordionTrigger,
-} from "@ui-sdk/react/accordion";
-
 const STATS = [
   { value: "15", label: "Content templates" },
   { value: "25", label: "Goal types" },
@@ -49,37 +41,6 @@ const SHOWCASE = [
         <rect x="18" y="9" width="3" height="6" rx="1.5" />
       </svg>
     ),
-  },
-];
-
-const FAQ = [
-  {
-    value: "local",
-    label: "Does everything run locally?",
-    content: [
-      "Yes. Text generation runs on your LM Studio or Ollama, images on your ComfyUI, voice and sound on local audio models. Your brand data and posts never leave your machine.",
-    ],
-  },
-  {
-    value: "models",
-    label: "Which models are supported?",
-    content: [
-      "Any OpenAI-compatible text endpoint (OpenAI, LM Studio, Ollama, custom). Images come from ComfyUI with your own workflows. Voice uses Ming TTS with cloning, sound uses MOSS-SoundEffect.",
-    ],
-  },
-  {
-    value: "export",
-    label: "How do I publish to Instagram?",
-    content: [
-      "Export a workspace folder per post: image, voice, sound, caption, and a README — everything separated and ready to upload manually from your phone or Instagram app.",
-    ],
-  },
-  {
-    value: "brand",
-    label: "How does brand extraction work?",
-    content: [
-      "Paste your website URL, text, or a document. AI reads it and builds a complete brand profile — tone, audience, benefits, words to use and avoid — that guides every generated post.",
-    ],
   },
 ];
 
@@ -128,39 +89,6 @@ export function LandingShowcase() {
             <p className="mt-1.5 text-sm leading-relaxed" style={{ color: "var(--muted)" }}>{s.text}</p>
           </div>
         ))}
-      </div>
-    </section>
-  );
-}
-
-export function LandingFaq() {
-  return (
-    <section className="relative mx-auto max-w-3xl px-8 pb-20">
-      <h2 className="text-center text-3xl font-bold tracking-tight" style={{ color: "#fff" }}>
-        Frequently asked questions
-      </h2>
-      <div className="glass mt-8 px-6 py-2">
-        <Accordion defaultValue={["local"]}>
-          {FAQ.map((item) => (
-            <AccordionItem key={item.value} value={item.value}>
-              <AccordionHeader>
-                <AccordionTrigger>
-                  {item.label}
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-                    <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </AccordionTrigger>
-              </AccordionHeader>
-              <AccordionPanel>
-                {item.content.map((paragraph) => (
-                  <p key={paragraph} className="text-sm leading-relaxed" style={{ color: "var(--muted)" }}>
-                    {paragraph}
-                  </p>
-                ))}
-              </AccordionPanel>
-            </AccordionItem>
-          ))}
-        </Accordion>
       </div>
     </section>
   );

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { PageChrome } from "@/components/nav";
 import { DeleteBrandDialog } from "@/components/DeleteBrandDialog";
-import { StatCard, DraftCard, ApprovedCard, EmptyState } from "@/components/content-widgets";
+import { StatCard, DraftCard, EmptyState } from "@/components/content-widgets";
 import type { ContentItem } from "@/features/content-dashboard/types";
 
 interface ProjectEntry {
@@ -42,7 +42,6 @@ export default function BrandClient() {
   }, [load]);
 
   const drafts = items.filter((i) => i.status !== "approved");
-  const approved = items.filter((i) => i.status === "approved");
   const heading = brand?.heading ?? "Brand";
 
   const deleteBrand = async () => {
@@ -65,9 +64,11 @@ export default function BrandClient() {
       <section className="relative mx-auto max-w-6xl px-8 pb-24 pt-12">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="anim-rise text-4xl font-bold tracking-tight" style={{ color: "#fff" }}>{heading}</h1>
+            <Link href={`/studio/${brainId}`} className="anim-rise text-4xl font-bold tracking-tight" style={{ color: "#fff" }}>
+              {heading}
+            </Link>
             <p className="anim-rise anim-rise-1 mt-2" style={{ color: "var(--muted)" }}>
-              Everything for this brand — drafts to finish, approved posts, and creation tools.
+              Everything for this brand — drafts to finish, creation tools, and one click to the full picture.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -100,11 +101,6 @@ export default function BrandClient() {
               <path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </StatCard>
-          <StatCard label="Approved" value={approved.length} delay={3}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-              <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </StatCard>
         </div>
 
         <div className="glass anim-rise mt-8 flex flex-wrap items-center gap-x-8 gap-y-3 p-6">
@@ -121,7 +117,7 @@ export default function BrandClient() {
           <div>
             <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--accent-bright)" }}>Workflow</div>
             <div className="mt-1 text-sm" style={{ color: "var(--muted)" }}>
-              Generate in Studio → finish in Workspace → approve here → publish manually.
+              Generate in Studio → finish in Workspace → approve in Approved → publish manually.
             </div>
           </div>
           <Link href={`/studio/${brainId}`} className="btn-ghost ml-auto">Create content</Link>
@@ -149,32 +145,6 @@ export default function BrandClient() {
                   onDeleted={(id) => setItems((prev) => prev.filter((i) => i.id !== id))}
                 />
               ))}
-            </div>
-          )}
-        </div>
-
-        {/* Approved */}
-        <div className="glass anim-rise mt-8 p-6">
-          <div className="flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-base font-semibold" style={{ color: "#fff" }}>
-              <span
-                className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                style={{ background: "#10b981" }}
-              >
-                ✓
-              </span>
-              Approved
-            </h2>
-            {approved.length > 0 && <Link href="/approved" className="text-xs transition-colors duration-200 hover:underline" style={{ color: "var(--accent-bright)" }}>All approved posts →</Link>}
-          </div>
-          {approved.length === 0 ? (
-            <EmptyState
-              title="Nothing approved yet"
-              hint="Approve drafts above and they will appear here, ready to publish manually."
-            />
-          ) : (
-            <div className="mt-4 space-y-3">
-              {approved.map((item) => <ApprovedCard key={item.id} item={item} />)}
             </div>
           )}
         </div>

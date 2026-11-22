@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LandingStats, LandingShowcase, LandingFaq, LandingFooter } from "./landing-sections";
+import { LandingStats, LandingShowcase, LandingFooter } from "./landing-sections";
 
 export const metadata = {
   title: "Social Studio",
@@ -107,7 +107,7 @@ export default function LandingPage() {
               <path d="M3 8h10m0 0l-4-4m4 4l-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </Link>
-          <Link href="/dashboard" className="btn-ghost !px-9 !py-4 !text-lg">
+          <Link href="/dashboard" className="btn-primary anim-glow !px-9 !py-4 !text-lg">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
               <rect x="3" y="3" width="7" height="9" rx="1.5" />
               <rect x="14" y="3" width="7" height="5" rx="1.5" />
@@ -159,7 +159,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <LandingFaq />
       <LandingFooter />
     </main>
   );

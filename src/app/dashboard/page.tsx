@@ -15,7 +15,6 @@ interface ProjectEntry {
 }
 
 interface BrandRow extends ProjectEntry {
-  drafts: number;
   approved: number;
   total: number;
 }
@@ -26,7 +25,7 @@ function brandInitial(heading: string): string {
 
 export default function DashboardPage() {
   const [brands, setBrands] = useState<BrandRow[]>([]);
-  const [totals, setTotals] = useState({ draft: 0, approved: 0, total: 0 });
+  const [totals, setTotals] = useState({ approved: 0, total: 0 });
   const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
@@ -43,17 +42,17 @@ export default function DashboardPage() {
         return {
           ...p,
           total: mine.length,
-          drafts: mine.filter((i) => i.status !== "approved").length,
           approved: mine.filter((i) => i.status === "approved").length,
         };
       });
       setBrands(rows);
       setTotals({
         total: items.length,
-        draft: items.filter((i) => i.status !== "approved").length,
         approved: items.filter((i) => i.status === "approved").length,
       });
-    } catch { /* empty */ }
+    } catch {
+      /* empty */
+    }
     setLoaded(true);
   }, []);
 
@@ -75,7 +74,7 @@ export default function DashboardPage() {
           <div>
             <h1 className="anim-rise text-4xl font-bold tracking-tight" style={{ color: "#fff" }}>Command Dashboard</h1>
             <p className="anim-rise anim-rise-1 mt-2" style={{ color: "var(--muted)" }}>
-              Every brand at a glance — drafts in progress, approved posts, and one click to the full picture.
+              Every brand at a glance — approved posts ready to publish, and one click to the full picture.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -89,19 +88,14 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <StatCard label="Brands" value={brands.length} delay={1}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
               <path d="M12 2a5 5 0 015 5c0 2.5-2 4-2 6h-6c0-2-2-3.5-2-6a5 5 0 015-5z" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M9 17h6M10 20h4" strokeLinecap="round" />
             </svg>
           </StatCard>
-          <StatCard label="Drafts" value={totals.draft} delay={2}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-              <path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </StatCard>
-          <StatCard label="Approved" value={totals.approved} delay={3}>
+          <StatCard label="Approved" value={totals.approved} delay={2}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
               <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -147,14 +141,10 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 </div>
-                <div className="mt-5 grid grid-cols-3 gap-2 text-center">
+                <div className="mt-5 grid grid-cols-2 gap-2 text-center">
                   <div className="rounded-xl py-2" style={{ background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)" }}>
                     <div className="text-lg font-bold" style={{ color: "#fff" }}>{b.total}</div>
                     <div className="text-[10px] uppercase tracking-widest" style={{ color: "var(--muted)" }}>Posts</div>
-                  </div>
-                  <div className="rounded-xl py-2" style={{ background: "rgba(251,191,36,0.10)", border: "1px solid rgba(251,191,36,0.25)" }}>
-                    <div className="text-lg font-bold" style={{ color: "#fff" }}>{b.drafts}</div>
-                    <div className="text-[10px] uppercase tracking-widest" style={{ color: "var(--muted)" }}>Drafts</div>
                   </div>
                   <div className="rounded-xl py-2" style={{ background: "rgba(52,211,153,0.10)", border: "1px solid rgba(52,211,153,0.25)" }}>
                     <div className="text-lg font-bold" style={{ color: "#fff" }}>{b.approved}</div>
