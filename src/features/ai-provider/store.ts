@@ -4,7 +4,7 @@ import type { ProviderConfig } from "./types";
 const DEFAULT_CONFIG: ProviderConfig = {
   providerId: "lm-studio",
   baseUrl: "http://127.0.0.1:1235/v1",
-  model: "ornith-1.5-9b",
+  model: "radixark_daisyrose-27b",
 };
 
 let currentConfig: ProviderConfig = { ...DEFAULT_CONFIG };
