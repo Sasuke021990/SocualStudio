@@ -327,7 +327,7 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
               <audio
                 controls
                 src={audio.url}
-                className="h-8 flex-1"
+                className="block min-w-0 flex-1"
                 preload="none"
                 onPlay={(e) => exclusivePlay(e.currentTarget)}
               />
@@ -385,7 +385,7 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
                 <audio
                   controls
                   src={sfx.audio.url}
-                  className="h-8 flex-1"
+                  className="block min-w-0 flex-1"
                   preload="none"
                   onPlay={(e) => exclusivePlay(e.currentTarget)}
                 />

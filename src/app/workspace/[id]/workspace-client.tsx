@@ -331,8 +331,8 @@ export default function WorkspaceClient() {
             )}
             {(audio || sfx) && (
               <div className="border-t border-zinc-100 px-3.5 py-2 space-y-2">
-                {audio && <audio controls src={audio.url} className="h-8 w-full" preload="none" onPlay={(e) => exclusivePlay(e.currentTarget)} />}
-                {sfx && <audio controls src={sfx.audio.url} className="h-8 w-full" preload="none" onPlay={(e) => exclusivePlay(e.currentTarget)} />}
+                {audio && <audio controls src={audio.url} className="block w-full" preload="none" onPlay={(e) => exclusivePlay(e.currentTarget)} />}
+                {sfx && <audio controls src={sfx.audio.url} className="block w-full" preload="none" onPlay={(e) => exclusivePlay(e.currentTarget)} />}
               </div>
             )}
           </div>
