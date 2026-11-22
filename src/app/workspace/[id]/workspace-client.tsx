@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { ContentItem, ContentStatus } from "@/features/content-dashboard/types";
+import { BackPill } from "@/components/nav";
 import { assembleImagePrompt } from "@/features/content-dashboard/variations";
 import { exclusivePlay } from "@/features/voice/audio-coordinator";
 import { acquireGenerationLock, releaseGenerationLock } from "@/features/content-dashboard/generation-lock";
@@ -208,7 +209,10 @@ export default function WorkspaceClient() {
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center">
-        <div className="animate-pulse text-zinc-500">Loading workspace...</div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="glass h-24 w-80 animate-pulse" />
+          <div className="glass h-40 w-80 animate-pulse" />
+        </div>
       </main>
     );
   }
@@ -230,20 +234,15 @@ export default function WorkspaceClient() {
       <div aria-hidden className="hero-grid absolute inset-x-0 top-0 h-[380px]" />
       {/* Back nav — the ONLY chrome on this page */}
       <div className="mx-auto flex max-w-5xl items-center justify-between px-6 pt-8">
-        <Link
-          href={item.brainId ? `/studio/${item.brainId}` : "/projects"}
-          className="back-pill"
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
-            <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Back to Studio
-        </Link>
+        <BackPill href={item.brainId ? `/studio/${item.brainId}` : "/projects"} label="Back to Studio" />
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 py-1 text-xs font-semibold text-white">
+          <span
+            className="rounded-full px-3 py-1 text-xs font-semibold text-white"
+            style={{ background: "linear-gradient(120deg, var(--accent), #a855f7)" }}
+          >
             {item.brandName}
           </span>
-          <span className="text-xs text-zinc-500">{item.platform}</span>
+          <span className="text-xs" style={{ color: "var(--muted)" }}>{item.platform}</span>
         </div>
       </div>
 
@@ -323,18 +322,19 @@ export default function WorkspaceClient() {
 
         {/* RIGHT: tools + editing */}
         <div className="flex flex-col gap-4">
-          <div className="rounded-xl border border-zinc-200 bg-white/60 p-4 dark:border-zinc-700 dark:bg-zinc-900/60">
-            <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Media Tools</h3>
+          <div className="glass p-4">
+            <h3 className="text-sm font-semibold" style={{ color: "#fff" }}>Media Tools</h3>
 
             {tools.length > 0 && (
               <div className="mt-3">
-                <div className="text-xs font-medium text-zinc-500">Image tool</div>
+                <div className="text-xs font-medium" style={{ color: "var(--muted)" }}>Image tool</div>
                 <div className="mt-1 flex flex-wrap gap-1.5">
                   {tools.map((t) => (
                     <button
                       key={t.id}
                       type="button"
-                      className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${toolId === t.id ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white" : "border border-zinc-200 text-zinc-600 hover:border-teal-300 dark:border-zinc-700 dark:text-zinc-400"}`}
+                      className="chip cursor-pointer transition"
+                      style={toolId === t.id ? { borderColor: "var(--accent)", color: "var(--accent-bright)" } : undefined}
                       onClick={() => setToolId(t.id)}
                     >
                       {t.name}
@@ -346,19 +346,19 @@ export default function WorkspaceClient() {
 
             <div className="mt-3 flex items-center gap-1.5">
               <select
-                className="flex-1 rounded-lg border border-zinc-300 px-2 py-1.5 text-xs dark:border-zinc-700 dark:bg-zinc-900"
+                className="field-input flex-1 !py-1.5 !text-xs"
                 value={voiceId}
                 onChange={(e) => setVoiceId(e.target.value)}
                 aria-label="Select voice"
               >
-                <option value="">🎤 Select voice</option>
+                <option value="">Select voice</option>
                 {voices.map((v) => (
-                  <option key={v.id} value={v.id}>{v.kind === "cloned" ? "🎙️ " : "🎤 "}{v.name}</option>
+                  <option key={v.id} value={v.id}>{v.name}{v.kind === "cloned" ? " (cloned)" : ""}</option>
                 ))}
               </select>
               <button
                 type="button"
-                className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-rose-500 to-orange-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+                className="btn-primary cursor-pointer px-3 py-1.5 text-xs"
                 disabled={generatingAudio || !voices.length || (anyGenerating && !generatingAudio)}
                 onClick={generateVoice}
               >
@@ -367,37 +367,38 @@ export default function WorkspaceClient() {
               {audio && (
                 <button
                   type="button"
-                  className="rounded-full border border-zinc-200 px-2 py-1 text-[10px] text-zinc-500 hover:bg-zinc-100"
+                  className="btn-ghost cursor-pointer px-2 py-1 text-xs"
                   onClick={() => { setAudio(null); generateVoice(); }}
                   disabled={generatingAudio}
+                  aria-label="Regenerate voice"
                 >
-                  🔄
+                  ↻
                 </button>
               )}
             </div>
-            {audioError && <p className="mt-1 text-[10px] text-red-500">{audioError}</p>}
+            {audioError && <p className="mt-1 text-[11px]" style={{ color: "var(--rose)" }}>{audioError}</p>}
 
             <div className="mt-2">
               <button
                 type="button"
-                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600 transition hover:border-purple-300 hover:text-purple-600 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                className="btn-ghost w-full cursor-pointer"
                 disabled={generatingSfx || (anyGenerating && !generatingSfx)}
                 onClick={generateSound}
               >
                 {generatingSfx ? "Generating sound..." : "Generate Sound"}
               </button>
-              {sfx?.soundPrompt && <p className="mt-1 text-[9px] italic text-zinc-400">{sfx.soundPrompt}</p>}
-              {sfxError && <p className="mt-1 text-[10px] text-red-500">{sfxError}</p>}
+              {sfx?.soundPrompt && <p className="mt-1 text-[11px] italic" style={{ color: "var(--muted)" }}>{sfx.soundPrompt}</p>}
+              {sfxError && <p className="mt-1 text-[11px]" style={{ color: "var(--rose)" }}>{sfxError}</p>}
             </div>
           </div>
 
-          <div className="rounded-xl border border-zinc-200 bg-white/60 p-4 dark:border-zinc-700 dark:bg-zinc-900/60">
-            <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Edit Post</h3>
+          <div className="glass p-4">
+            <h3 className="text-sm font-semibold" style={{ color: "#fff" }}>Edit Post</h3>
 
-            <label className="mt-2 flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            <label className="mt-2 flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--accent-bright)" }}>
               Caption
               <textarea
-                className="rounded-lg border border-zinc-300 px-3 py-2 text-sm font-normal normal-case tracking-normal text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                className="field-input !normal-case !tracking-normal"
                 rows={5}
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
@@ -405,14 +406,14 @@ export default function WorkspaceClient() {
             </label>
 
             <div className="mt-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Hashtags</div>
+              <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--accent-bright)" }}>Hashtags</div>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {hashtags.map((tag, i) => (
-                  <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                  <span key={i} className="chip">
                     #{tag}
                     <button
                       type="button"
-                      className="rounded-full p-0.5 text-zinc-400 hover:text-red-500"
+                      className="ml-1 cursor-pointer opacity-60 hover:opacity-100"
                       onClick={() => setHashtags(hashtags.filter((_, j) => j !== i))}
                       aria-label={`Remove ${tag}`}
                     >
@@ -423,7 +424,7 @@ export default function WorkspaceClient() {
               </div>
               <input
                 type="text"
-                className="mt-1.5 w-full rounded-lg border border-zinc-300 px-2.5 py-1.5 text-xs dark:border-zinc-700 dark:bg-zinc-900"
+                className="field-input mt-1.5 !text-xs"
                 value={newTag}
                 onChange={(e) => setNewTag(e.target.value)}
                 onKeyDown={(e) => {
@@ -438,20 +439,20 @@ export default function WorkspaceClient() {
               />
             </div>
 
-            <label className="mt-2 flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            <label className="mt-2 flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--accent-bright)" }}>
               Call to Action
               <input
                 type="text"
-                className="rounded-lg border border-zinc-300 px-3 py-2 text-sm font-normal normal-case tracking-normal text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                className="field-input !normal-case !tracking-normal"
                 value={cta}
                 onChange={(e) => setCta(e.target.value)}
               />
             </label>
 
-            <label className="mt-2 flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            <label className="mt-2 flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--accent-bright)" }}>
               Sound Description
               <textarea
-                className="rounded-lg border border-zinc-300 px-3 py-2 text-sm font-normal normal-case tracking-normal text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                className="field-input !normal-case !tracking-normal"
                 rows={2}
                 value={soundPrompt}
                 onChange={(e) => setSoundPrompt(e.target.value)}
@@ -465,7 +466,8 @@ export default function WorkspaceClient() {
             </button>
             <button
               type="button"
-              className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 px-4 py-2.5 font-semibold text-white shadow-lg transition hover:opacity-90 disabled:opacity-60"
+              className="btn-primary flex-1"
+              style={{ background: "linear-gradient(120deg, #10b981, #34d399)" }}
               disabled={saving}
               onClick={markApproved}
             >

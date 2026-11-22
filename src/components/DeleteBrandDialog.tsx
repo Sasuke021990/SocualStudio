@@ -65,9 +65,9 @@ export function DeleteBrandDialog({
       <AlertDialogTrigger className={triggerClassName ?? "btn-ghost"}>
         {triggerLabel}
       </AlertDialogTrigger>
-      <AlertDialogBackdrop style={{ background: "rgba(2,4,10,0.72)", backdropFilter: "blur(4px)" }} />
+      <AlertDialogBackdrop style={{ background: "rgba(2,4,10,0.85)", backdropFilter: "blur(6px)" }} />
       <AlertDialogContent
-        className="glass-card p-6"
+        className="p-6"
         style={{
           position: "fixed",
           inset: 0,
@@ -77,6 +77,10 @@ export function DeleteBrandDialog({
           overflowY: "auto",
           maxWidth: "28rem",
           width: "calc(100vw - 2rem)",
+          background: "#151a26",
+          border: "1px solid var(--border-bright)",
+          borderRadius: "1rem",
+          boxShadow: "0 24px 80px -12px rgba(0,0,0,0.7)",
         }}
       >
         <AlertDialogTitle className="text-lg font-semibold" style={{ color: "#fff" }}>

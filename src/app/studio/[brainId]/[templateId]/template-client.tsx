@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { PageChrome } from "@/components/nav";
 import { CONTENT_TEMPLATES } from "@/features/content-dashboard/types";
@@ -21,20 +20,6 @@ function GoalIcon({ id, emoji }: { id: string; emoji: string }) {
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={`/goals/${id}.png?v=2`}
-      alt=""
-      className="h-full w-full object-cover"
-      onError={() => setFailed(true)}
-    />
-  );
-}
-
-function TemplateIcon({ id, emoji }: { id: string; emoji: string }) {
-  const [failed, setFailed] = useState(false);
-  if (failed) return <span className="text-lg">{emoji}</span>;
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={`/templates/${id}.png?v=2`}
       alt=""
       className="h-full w-full object-cover"
       onError={() => setFailed(true)}
@@ -214,35 +199,57 @@ export default function TemplateClient() {
 
       <section className="mx-auto max-w-6xl px-5 pb-24 pt-12 sm:px-8">
         <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
-          {/* LEFT: pre-template picker */}
+          {/* LEFT: post type picker */}
           <aside className="anim-rise">
             <h2 className="text-sm font-semibold uppercase tracking-widest" style={{ color: "var(--accent-bright)" }}>
-              Templates
+              Post Type
             </h2>
             <div className="mt-4 flex flex-col gap-2">
-              {CONTENT_TEMPLATES.map((t) => (
-                <Link
-                  key={t.id}
-                  href={`/studio/${brainId}/${t.id}`}
-                  className="glass flex items-center gap-3 p-2.5 transition"
-                  style={t.id === tpl.id ? { borderColor: "var(--accent)", boxShadow: "0 8px 28px -8px var(--accent-glow)" } : undefined}
+              {CONTENT_GOALS.map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  aria-pressed={goal?.id === g.id}
+                  className="glass relative flex items-center gap-3 p-2.5 text-left transition"
+                  style={goal?.id === g.id ? { borderColor: "var(--accent)", boxShadow: "0 8px 28px -8px var(--accent-glow)" } : undefined}
+                  onClick={() => setGoal(g)}
                 >
+                  {goal?.id === g.id && (
+                    <span
+                      className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                      style={{ background: "var(--accent)" }}
+                      aria-hidden
+                    >
+                      ✓
+                    </span>
+                  )}
                   <span
-                    className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg text-lg"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg"
                     style={{
                       background: "linear-gradient(135deg, rgba(99,102,241,0.18), rgba(168,85,247,0.10))",
                       border: "1px solid rgba(99,102,241,0.30)",
                     }}
                   >
-                    <TemplateIcon id={t.id} emoji={t.icon} />
+                    <GoalIcon id={g.id} emoji={g.icon} />
                   </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-xs font-semibold" style={{ color: "#fff" }}>{t.label}</span>
-                    <span className="block text-[11px]" style={{ color: "var(--muted)" }}>{t.platform}</span>
+                    <span className="block truncate text-xs font-semibold" style={{ color: "#fff" }}>{g.label}</span>
+                    <span className="block text-[11px] leading-tight" style={{ color: "var(--muted)" }}>{g.description}</span>
                   </span>
-                </Link>
+                </button>
               ))}
             </div>
+
+            {/* Custom goal */}
+            {goal?.id === "custom" && (
+              <textarea
+                className="field-input anim-rise mt-4 !normal-case !tracking-normal"
+                rows={4}
+                value={customText}
+                onChange={(e) => setCustomText(e.target.value)}
+                placeholder="Describe exactly what you want... e.g., 'Funny meme-style post about Monday blues for a streetwear audience'"
+              />
+            )}
           </aside>
 
           {/* RIGHT: generation section */}
@@ -253,62 +260,12 @@ export default function TemplateClient() {
           </div>
           <div>
             <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#fff" }}>{tpl.label}</h1>
-            <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>{tpl.platform} · {brandName}</p>
+            <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>{tpl.platform} · {brandName}{goal ? ` · ${goal.label}` : ""}</p>
           </div>
         </div>
 
-        {/* Goal grid */}
-        <h2 className="anim-rise anim-rise-1 mt-10 text-sm font-semibold uppercase tracking-widest" style={{ color: "var(--muted)" }}>
-          What kind of post do you want?
-        </h2>
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {CONTENT_GOALS.map((g, i) => (
-            <button
-              key={g.id}
-              type="button"
-              aria-pressed={goal?.id === g.id}
-              className={`glass anim-rise anim-rise-${(i % 4) + 1} relative flex flex-col items-center gap-2 p-4 text-center transition ${goal?.id === g.id ? "" : "card-hover"}`}
-              style={goal?.id === g.id ? { borderColor: "var(--accent)", boxShadow: "0 8px 28px -8px var(--accent-glow)" } : undefined}
-              onClick={() => setGoal(g)}
-            >
-              {goal?.id === g.id && (
-                <span
-                  className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                  style={{ background: "var(--accent)" }}
-                  aria-hidden
-                >
-                  ✓
-                </span>
-              )}
-              <span
-                className="flex h-16 w-full items-center justify-center overflow-hidden rounded-xl"
-                style={{
-                  background: "linear-gradient(135deg, rgba(99,102,241,0.18), rgba(168,85,247,0.10))",
-                  border: "1px solid rgba(99,102,241,0.30)",
-                }}
-              >
-                <GoalIcon id={g.id} emoji={g.icon} />
-              </span>
-              <span className="text-xs font-semibold">{g.label}</span>
-              <span className="text-[10px] leading-tight" style={{ color: "var(--muted)" }}>{g.description}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Custom goal */}
-        {goal?.id === "custom" && (
-          <textarea
-            className="field-input anim-rise mt-4 !normal-case !tracking-normal"
-            rows={3}
-            value={customText}
-            onChange={(e) => setCustomText(e.target.value)}
-            placeholder="Describe exactly what you want... e.g., 'Funny meme-style post about Monday blues for a streetwear audience'"
-          />
-        )}
-
         {/* Generate strip */}
-        {goal && (
-          <div className="glass anim-rise mt-6 p-5">
+        <div className="glass anim-rise mt-6 p-5">
             <div className="flex flex-wrap items-center gap-3">
               <input
                 className="field-input !normal-case !tracking-normal"
@@ -320,7 +277,7 @@ export default function TemplateClient() {
               <button
                 type="button"
                 className="btn-primary"
-                disabled={generating || (goal.id === "custom" && !customGoalTextReady()) || (anyGenerating && !generating)}
+                disabled={!goal || generating || (goal.id === "custom" && !customGoalTextReady()) || (anyGenerating && !generating)}
                 onClick={generate}
               >
                 {generating ? (
@@ -351,7 +308,7 @@ export default function TemplateClient() {
                       style={toolId === t.id ? { borderColor: "var(--accent)", color: "var(--accent-bright)" } : undefined}
                       onClick={() => setToolId(t.id)}
                     >
-                      🎨 {t.name}
+                      {t.name}
                     </button>
                   ))}
                 </div>
@@ -365,7 +322,6 @@ export default function TemplateClient() {
             )}
             {error && <p className="mt-3 text-sm" style={{ color: "var(--rose)" }}>{error}</p>}
           </div>
-        )}
 
         {/* Generated cards */}
         {variations.length > 0 && (

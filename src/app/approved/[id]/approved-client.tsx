@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { ContentItem } from "@/features/content-dashboard/types";
+import { BackPill } from "@/components/nav";
 import { exclusivePlay } from "@/features/voice/audio-coordinator";
 
 export default function ApprovedClient() {
@@ -84,15 +85,7 @@ export default function ApprovedClient() {
       <div aria-hidden className="hero-grid absolute inset-x-0 top-0 h-[380px]" />
       {/* Back nav */}
       <div className="mx-auto flex max-w-5xl items-center justify-between px-5 pt-8 sm:px-6">
-        <Link
-          href="/approved"
-          className="back-pill anim-rise"
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
-            <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Back to Approved
-        </Link>
+        <BackPill href="/approved" label="Back to Approved" />
         <div className="flex flex-col items-end gap-1">
           <div className="flex items-center gap-3">
             <span className="chip anim-rise">

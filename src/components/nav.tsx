@@ -1,8 +1,21 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export function BackPill({ href, label }: { href: string; label: string }) {
+  const router = useRouter();
   return (
-    <Link href={href} className="back-pill anim-rise">
+    <Link
+      href={href}
+      className="back-pill anim-rise"
+      onClick={(e) => {
+        if (window.history.length > 1) {
+          e.preventDefault();
+          router.back();
+        }
+      }}
+    >
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
         <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
