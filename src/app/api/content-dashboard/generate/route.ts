@@ -15,6 +15,8 @@ const requestSchema = z.object({
   count: z.number().min(1).max(10).default(5),
   brandContext: z.string().optional(),
   goalPrompt: z.string().optional(),
+  /** Per-run override: true = use MCP tools even if the stage switch is off. */
+  useMcp: z.boolean().optional(),
 });
 
 const captionSchema = z.object({
@@ -120,7 +122,10 @@ Return ONLY valid JSON — no markdown fences, no prose.`;
           try {
             // PHASE 1: caption
             send({ phase: `Variation ${i + 1}/${count} - writing caption...` });
-            const toolset = await acquireToolset("contentGeneration");
+            const toolset =
+              parsed.data.useMcp === false
+                ? null
+                : await acquireToolset("contentGeneration", { ignoreStage: parsed.data.useMcp === true });
             const captionResult = await provider.generateContent<z.infer<typeof captionWrapSchema>>({
               config,
               system: captionSystemPrompt,

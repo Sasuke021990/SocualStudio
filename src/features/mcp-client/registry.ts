@@ -32,13 +32,17 @@ function truncate(text: string): string {
 }
 
 /**
- * Collect OpenAI-format tool schemas from all enabled servers whose stage
- * toggle allows `stage`. Returns null when nothing is available so callers
- * can skip the `tools` param entirely (zero overhead).
+ * Collect OpenAI-format tool schemas from all enabled servers allowed for
+ * `stage`. Pass `{ ignoreStage: true }` to force acquisition regardless of the
+ * global stage switch (per-run override). Returns null when nothing is
+ * available so callers can skip the `tools` param entirely (zero overhead).
  */
-export async function acquireToolset(stage: McpStage): Promise<McpToolset | null> {
+export async function acquireToolset(
+  stage: McpStage,
+  opts?: { ignoreStage?: boolean },
+): Promise<McpToolset | null> {
   const config = await getMcpConfig();
-  if (!config.stages[stage]) return null;
+  if (!opts?.ignoreStage && !config.stages[stage]) return null;
   const servers = config.servers.filter((s) => s.enabled);
   if (servers.length === 0) return null;
 
