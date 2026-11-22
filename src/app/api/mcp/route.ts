@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getMcpConfig, saveMcpConfig } from "@/features/mcp-client/store";
-import { mcpServerInputSchema, mcpStagesSchema } from "@/features/mcp-client/schemas";
+import { mcpServerInputSchema, mcpServerObjectSchema, mcpStagesSchema } from "@/features/mcp-client/schemas";
 import type { McpServerConfig } from "@/features/mcp-client/types";
 
 export async function GET() {
@@ -61,7 +61,9 @@ export async function PATCH(request: Request) {
   if (typeof id !== "string" || !id) {
     return NextResponse.json({ error: "id required" }, { status: 400 });
   }
-  const parsed = mcpServerInputSchema.partial().safeParse(updates);
+  // zod v4: `.partial()` cannot wrap the refined create schema — validate the
+  // shape loosely here, then the fully-merged server below.
+  const parsed = mcpServerObjectSchema.partial().safeParse(updates);
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid MCP server config", details: parsed.error.issues },
@@ -74,7 +76,15 @@ export async function PATCH(request: Request) {
   if (!existing) {
     return NextResponse.json({ error: "Server not found" }, { status: 404 });
   }
-  Object.assign(existing, parsed.data);
+  const merged = { ...existing, ...parsed.data } as McpServerConfig;
+  const mergedCheck = mcpServerInputSchema.safeParse(merged);
+  if (!mergedCheck.success) {
+    return NextResponse.json(
+      { error: "Invalid MCP server config", details: mergedCheck.error.issues },
+      { status: 400 },
+    );
+  }
+  Object.assign(existing, mergedCheck.data);
   await saveMcpConfig(config);
   return NextResponse.json({ server: existing });
 }
