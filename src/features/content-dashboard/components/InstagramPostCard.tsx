@@ -56,7 +56,7 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
       const res = await fetch("/api/comfyui/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: fullPrompt, connectionId: toolId ?? undefined }),
+        body: JSON.stringify({ prompt: fullPrompt, connectionId: toolId ?? undefined, width: 1024, height: 1024 }),
       });
       const data = (await res.json()) as { images?: GeneratedImage[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Image generation failed");

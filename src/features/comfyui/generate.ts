@@ -17,6 +17,7 @@ export function injectPrompt(
   workflow: Record<string, unknown>,
   prompt: string,
   negativePrompt?: string,
+  size?: { width: number; height: number },
 ): Record<string, unknown> {
   const cloned = JSON.parse(JSON.stringify(workflow)) as Record<string, { inputs?: Record<string, unknown>; class_type?: string }>;
   for (const [, node] of Object.entries(cloned)) {
@@ -46,6 +47,12 @@ export function injectPrompt(
       node.inputs.prompt = prompt;
     }
 
+    // Output size: honour the caller's target format (reel 9:16, post 1:1, …)
+    if (size && (ct.includes("EmptyLatentImage") || ct.includes("EmptySD3LatentImage"))) {
+      if ("width" in node.inputs) node.inputs.width = size.width;
+      if ("height" in node.inputs) node.inputs.height = size.height;
+    }
+
     // Randomize seeds so each generation produces a different image.
     if (node.inputs) {
       const randomizeSeeds = (obj: Record<string, unknown>) => {
@@ -71,12 +78,13 @@ export async function generateComfyImages(
   connection: ComfyConnectionLike,
   prompt: string,
   negativePrompt?: string,
+  size?: { width: number; height: number },
 ): Promise<ComfyImageResult[]> {
   if (!connection.workflowJson) {
     throw new Error("No ComfyUI connection with workflow. Add one in Settings and set it active.");
   }
   const baseUrl = connection.baseUrl.replace(/\/+$/, "");
-  const workflow = injectPrompt(connection.workflowJson, prompt, negativePrompt);
+  const workflow = injectPrompt(connection.workflowJson, prompt, negativePrompt, size);
 
   const queueRes = await fetch(`${baseUrl}/prompt`, {
     method: "POST",

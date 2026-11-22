@@ -6,6 +6,7 @@ import { getComfyUIState, getActiveConnection } from "@/features/comfyui/store";
 import { generateComfyImages } from "@/features/comfyui/generate";
 import { freeComfyUIModels } from "@/features/comfyui/free";
 import { unloadLocalModel } from "@/features/ai-provider/unload";
+import { preloadLocalModel } from "@/features/ai-provider/preload";
 import { getProviderConfig } from "@/features/ai-provider/store";
 import { getMcpConfig } from "@/features/mcp-client/store";
 import { composeReelPlan } from "@/features/reel/composer";
@@ -86,13 +87,16 @@ export async function POST(request: Request) {
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
+      let unloaded = false;
       try {
         // ── 1. Generate storyboard images (VRAM: unload LLM first, free Comfy after) ──
         await unloadLocalModel(await getProviderConfig());
+        unloaded = true;
         const imagePaths: string[] = [];
         for (let i = 0; i < spec.imageCount; i++) {
           controller.enqueue(send({ phase: `Generating image ${i + 1}/${spec.imageCount}…` }));
-          const images = await generateComfyImages(connection, spec.imageBriefs[i]);
+          // Reel storyboard images are 9:16 — they must fill the vertical frame.
+          const images = await generateComfyImages(connection, spec.imageBriefs[i], undefined, { width: 720, height: 1280 });
           const path = await downloadIntoReelDir(itemId, images[0].viewUrl, `img${i}.png`);
           imagePaths.push(path);
         }
@@ -149,6 +153,8 @@ export async function POST(request: Request) {
               : "Reel generation failed";
         controller.enqueue(send({ error: msg }));
       } finally {
+        // VRAM is free again — warm the model back so planning/LLM calls stay instant.
+        if (unloaded) void preloadLocalModel(await getProviderConfig());
         controller.close();
       }
     },

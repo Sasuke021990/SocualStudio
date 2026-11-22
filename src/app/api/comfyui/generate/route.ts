@@ -3,13 +3,15 @@ import { z } from "zod";
 import { getActiveConnection, getComfyUIState } from "@/features/comfyui/store";
 import { getProviderConfig } from "@/features/ai-provider/store";
 import { unloadLocalModel } from "@/features/ai-provider/unload";
+import { preloadLocalModel } from "@/features/ai-provider/preload";
 import { generateComfyImages } from "@/features/comfyui/generate";
 
 const generateSchema = z.object({
   prompt: z.string().min(1, "Image prompt required"),
   negativePrompt: z.string().optional(),
-  width: z.number().min(64).max(2048).default(1024),
-  height: z.number().min(64).max(2048).default(1024),
+  /** Target output size — omitted = the workflow's own dimensions. */
+  width: z.number().min(64).max(2048).optional(),
+  height: z.number().min(64).max(2048).optional(),
   connectionId: z.string().optional(),
 });
 
@@ -44,7 +46,11 @@ export async function POST(request: Request) {
   const unloadResult = await unloadLocalModel(providerConfig);
 
   try {
-    const images = await generateComfyImages(connection, parsed.data.prompt, parsed.data.negativePrompt);
+    const size =
+      parsed.data.width && parsed.data.height
+        ? { width: parsed.data.width, height: parsed.data.height }
+        : undefined;
+    const images = await generateComfyImages(connection, parsed.data.prompt, parsed.data.negativePrompt, size);
     // Proxy through our API to avoid browser CORS issues with ComfyUI /view
     const proxied = images.map((img) => ({
       ...img,
@@ -55,5 +61,8 @@ export async function POST(request: Request) {
     const msg = err instanceof Error ? err.message : "Image generation failed";
     const status = /timed out/i.test(msg) ? 504 : /rejected|no ComfyUI|workflow/i.test(msg) ? 400 : 500;
     return NextResponse.json({ error: msg }, { status });
+  } finally {
+    // VRAM is free again — warm the LLM back so planning stays instant.
+    void preloadLocalModel(providerConfig);
   }
 }
