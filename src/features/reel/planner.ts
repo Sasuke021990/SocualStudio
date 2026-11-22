@@ -90,16 +90,21 @@ export async function planReelSpec(input: PlanReelInput, signal?: AbortSignal): 
   const userPrompt = `Brand context:\n${input.caption}\n${(input.hashtags ?? []).map((h) => `#${h}`).join(" ")}\n${input.imageConcept ? `Image concept: ${input.imageConcept}` : ""}\n${input.soundDescription ? `Sound mood: ${input.soundDescription}` : ""}\n\nReel direction from the user:\n${input.reelPrompt}`;
 
   let lastError: Error | undefined;
+  let lastScore: number | null = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const creative = await provider.generateContent({
+      const creative: Creative = await provider.generateContent({
         config,
         system,
-        prompt: attempt === 0 ? userPrompt : `${userPrompt}\n\nPrevious attempt scored ${attempt} on the hook and was rejected. Make the hook unmistakably scroll-stopping.`,
+        prompt:
+          attempt === 0 || lastScore === null
+            ? userPrompt
+            : `${userPrompt}\n\nPrevious attempt scored ${lastScore}/10 on the hook and was rejected. Make the hook unmistakably scroll-stopping.`,
         schema: creativeSchema,
         signal,
       });
-      if (creative.hookScore < 8) {
+      lastScore = creative.hookScore;
+      if (creative.hookScore < 7) {
         lastError = new Error(`Hook scored ${creative.hookScore}/10`);
         continue;
       }
