@@ -91,8 +91,14 @@ export async function executeReelPlan(server: McpServerConfig, steps: ReelToolSt
             const frameAspect = 9 / 16;
             const ratio = Math.max(mediaAspect, frameAspect) / Math.min(mediaAspect, frameAspect);
             if (ratio > 1.02) {
-              const cover = +ratio.toFixed(3);
-              await conn.callTool("set_clip_transform", { clipId, scale: { x: cover, y: cover } });
+              // fitMode cover: fill the 9:16 frame, crop the overflow (no scale math).
+              const trText = await conn.callTool("set_clip_transform", {
+                clipId,
+                transform: { fitMode: "cover" },
+              });
+              if (ERROR_CODES.test(trText)) {
+                console.warn(`[reel] cover-fit failed for ${step.clipName}:`, trText.slice(0, 200));
+              }
             }
           }
         }

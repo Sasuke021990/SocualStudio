@@ -1,13 +1,14 @@
 // One-off frame probe (delete after use). Usage: node frame-check.mjs <seconds> <name>
 import { execSync } from "node:child_process";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 const at = Number(process.argv[2] ?? 2);
 const name = process.argv[3] ?? "pipe-check";
 const ROOT = "C:\\Users\\Administrator\\Videos\\spike-reel";
-const transport = new StreamableHTTPClientTransport(new URL("http://127.0.0.1:60531/mcp"), {
-  requestInit: { headers: { Authorization: "Bearer 1fae0cea1d7ab0f4e68ab645ef1723f9f82e065dfd515c4aa97b157726d64aca" } },
+const transport = new StdioClientTransport({
+  command: "node",
+  args: ["C:\\Users\\Administrator\\AppData\\Local\\Programs\\@openreeldesktop\\resources\\app.asar.unpacked\\dist\\mcp-shim\\index.js"],
 });
 const client = new Client({ name: "social-studio-check", version: "1.0.0" });
 await client.connect(transport);
