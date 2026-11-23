@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { basename, join } from "node:path";
 import { getContentItem, updateContentItem } from "@/features/content-dashboard/store";
+import type { ContentItem } from "@/features/content-dashboard/types";
 import { getComfyUIState, getActiveConnection } from "@/features/comfyui/store";
 import { generateComfyImages } from "@/features/comfyui/generate";
 import { freeComfyUIModels } from "@/features/comfyui/free";
@@ -12,6 +13,7 @@ import { getMcpConfig } from "@/features/mcp-client/store";
 import { composeReelPlan } from "@/features/reel/composer";
 import { executeReelPlan, ReelStepError } from "@/features/reel/executor";
 import { voiceFitCheck, type ReelAssets, type ReelSpec } from "@/features/reel/schemas";
+import { createReelJob, finishReelJob, type ReelJob } from "@/features/reel/jobs";
 import {
   copyIntoReelDir,
   copyReelToExport,
@@ -37,7 +39,11 @@ function audioFileName(url: string | null | undefined): string | null {
   }
 }
 
-/** Render a reel from the approved plan. Streams NDJSON progress events. */
+/**
+ * Start rendering a reel from the approved plan. Runs detached and reports
+ * progress via /api/reel/job?job=<id> polling — long streams die behind
+ * proxies, polls do not.
+ */
 export async function POST(request: Request) {
   let body: unknown = null;
   try {
@@ -81,87 +87,101 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "OpenReel MCP server is not connected (Settings → MCP)" }, { status: 400 });
   }
 
-  const encoder = new TextEncoder();
-  const send = (obj: unknown) => encoder.encode(`${JSON.stringify(obj)}\n`);
-  const itemId = item.id;
-
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      let unloaded = false;
-      try {
-        // ── 1. Generate storyboard images (VRAM: unload LLM first, free Comfy after) ──
-        await unloadLocalModel(await getProviderConfig());
-        unloaded = true;
-        const imagePaths: string[] = [];
-        for (let i = 0; i < spec.imageCount; i++) {
-          controller.enqueue(send({ phase: `Generating image ${i + 1}/${spec.imageCount}…` }));
-          // Reel storyboard images are 9:16 — they must fill the vertical frame.
-          const images = await generateComfyImages(connection, spec.imageBriefs[i], undefined, { width: 720, height: 1280 });
-          const path = await downloadIntoReelDir(itemId, images[0].viewUrl, `img${i}.png`);
-          imagePaths.push(path);
-        }
-        await freeComfyUIModels();
-
-        // ── 2. Stage audio ──
-        controller.enqueue(send({ phase: "Staging voice and sound…" }));
-        const voicePath = await copyIntoReelDir(itemId, join(TTS_OUTPUT_DIR, voiceFile), "voice.wav");
-        const musicPath = await copyIntoReelDir(itemId, join(SFX_OUTPUT_DIR, musicFile), "music.wav");
-        const voiceSeconds = await wavDurationSec(voicePath);
-        const musicSeconds = await wavDurationSec(musicPath);
-
-        const fit = voiceFitCheck(voiceSeconds, spec.durationSeconds);
-        if (!fit.ok) throw new Error(fit.message);
-
-        // ── 3. Compose + execute the plan ──
-        controller.enqueue(send({ phase: "Building timeline…" }));
-        const assets: ReelAssets = {
-          imagePaths,
-          voicePath,
-          musicPath,
-          voiceSeconds,
-          musicSeconds,
-          outputPath: join(reelWorkDir(itemId), "reel.mp4"),
-        };
-        const steps = composeReelPlan(spec, assets, { projectName: item.title.slice(0, 60) });
-
-        controller.enqueue(send({ phase: `Rendering ${spec.durationSeconds}s reel…` }));
-        await executeReelPlan(openreel, steps);
-
-        controller.enqueue(send({ phase: "Exporting…" }));
-        await copyReelToExport(itemId, assets.outputPath);
-
-        await updateContentItem(itemId, {
-          variation: {
-            ...variation!,
-            reel: {
-              videoFile: "reel.mp4",
-              imageFiles: imagePaths.map((p) => basename(p)),
-              createdAt: new Date().toISOString(),
-            },
-          },
-        });
-
-        controller.enqueue(
-          send({ done: { videoUrl: `/api/reel/file?item=${itemId}`, durationSeconds: spec.durationSeconds, imageCount: spec.imageCount } }),
-        );
-      } catch (err) {
-        const msg =
-          err instanceof ReelStepError
-            ? `OpenReel step failed — ${err.stepLabel}: ${err.message.replace(err.stepLabel + ": ", "")}`
-            : err instanceof Error
-              ? err.message
-              : "Reel generation failed";
-        controller.enqueue(send({ error: msg }));
-      } finally {
-        // VRAM is free again — warm the model back so planning/LLM calls stay instant.
-        if (unloaded) void preloadLocalModel(await getProviderConfig());
-        controller.close();
-      }
-    },
+  const job = createReelJob();
+  void runReelJob(job, {
+    itemId: item.id,
+    itemTitle: item.title,
+    variation: variation!,
+    spec,
+    voiceFile,
+    musicFile,
+    connection,
+    openreel,
   });
 
-  return new Response(stream, {
-    status: 200,
-    headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store" },
-  });
+  return NextResponse.json({ job: job.id });
+}
+
+interface RunDeps {
+  itemId: string;
+  itemTitle: string;
+  variation: NonNullable<ContentItem["variation"]>;
+  spec: ReelSpec;
+  voiceFile: string;
+  musicFile: string;
+  connection: NonNullable<Awaited<ReturnType<typeof getActiveConnection>>>;
+  openreel: NonNullable<Awaited<ReturnType<typeof getMcpConfig>>["servers"][number]>;
+}
+
+async function runReelJob(job: ReelJob, deps: RunDeps): Promise<void> {
+  const { itemId, itemTitle, variation, spec, voiceFile, musicFile, connection, openreel } = deps;
+  let unloaded = false;
+  try {
+    // ── 1. Storyboard images (VRAM: unload LLM first, free Comfy after) ──
+    await unloadLocalModel(await getProviderConfig());
+    unloaded = true;
+    const imagePaths: string[] = [];
+    for (let i = 0; i < spec.imageCount; i++) {
+      job.phase = `Generating image ${i + 1}/${spec.imageCount}…`;
+      // Reel storyboard images are 9:16 — they must fill the vertical frame.
+      const images = await generateComfyImages(connection, spec.imageBriefs[i], undefined, { width: 720, height: 1280 });
+      imagePaths.push(await downloadIntoReelDir(itemId, images[0].viewUrl, `img${i}.png`));
+    }
+    await freeComfyUIModels();
+
+    // ── 2. Stage audio ──
+    job.phase = "Staging voice and sound…";
+    const voicePath = await copyIntoReelDir(itemId, join(TTS_OUTPUT_DIR, voiceFile), "voice.wav");
+    const musicPath = await copyIntoReelDir(itemId, join(SFX_OUTPUT_DIR, musicFile), "music.wav");
+    const voiceSeconds = await wavDurationSec(voicePath);
+    const musicSeconds = await wavDurationSec(musicPath);
+
+    const fit = voiceFitCheck(voiceSeconds, spec.durationSeconds);
+    if (!fit.ok) throw new Error(fit.message);
+
+    // ── 3. Compose + execute ──
+    job.phase = "Building timeline…";
+    const assets: ReelAssets = {
+      imagePaths,
+      voicePath,
+      musicPath,
+      voiceSeconds,
+      musicSeconds,
+      outputPath: join(reelWorkDir(itemId), "reel.mp4"),
+    };
+    const steps = composeReelPlan(spec, assets, { projectName: itemTitle.slice(0, 60) });
+
+    job.phase = `Rendering ${spec.durationSeconds}s reel…`;
+    await executeReelPlan(openreel, steps);
+
+    job.phase = "Exporting…";
+    await copyReelToExport(itemId, assets.outputPath);
+
+    await updateContentItem(itemId, {
+      variation: {
+        ...variation,
+        reel: {
+          videoFile: "reel.mp4",
+          imageFiles: imagePaths.map((p) => basename(p)),
+          createdAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    job.done = { videoUrl: `/api/reel/file?item=${itemId}`, durationSeconds: spec.durationSeconds, imageCount: spec.imageCount };
+    job.phase = "Done";
+    finishReelJob(job.id);
+  } catch (err) {
+    job.error =
+      err instanceof ReelStepError
+        ? `OpenReel step failed — ${err.stepLabel}: ${err.message.replace(err.stepLabel + ": ", "")}`
+        : err instanceof Error
+          ? err.message
+          : "Reel generation failed";
+    job.phase = "Failed";
+    finishReelJob(job.id);
+  } finally {
+    // VRAM is free again — warm the model back so planning/LLM calls stay instant.
+    if (unloaded) void preloadLocalModel(await getProviderConfig());
+  }
 }

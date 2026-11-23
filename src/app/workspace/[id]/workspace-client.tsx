@@ -209,31 +209,24 @@ export default function WorkspaceClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ itemId: id, connectionId: toolId ?? undefined }),
       });
-      if (!res.ok || !res.body) {
-        const data = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data.error ?? `Request failed (${res.status})`);
-      }
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let done = false;
-      while (!done) {
-        const { value, done: sd } = await reader.read();
-        if (sd) done = true;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          const evt = JSON.parse(line) as { phase?: string; done?: { videoUrl: string }; error?: string };
-          if (evt.phase) setReelPhase(evt.phase);
-          if (evt.error) throw new Error(evt.error);
-          if (evt.done) {
-            setReelMeta({ videoFile: "reel.mp4", imageFiles: [], createdAt: new Date().toISOString() });
-            setCardView("reel");
-          }
+      const start = (await res.json()) as { job?: string; error?: string };
+      if (!res.ok || !start.job) throw new Error(start.error ?? `Request failed (${res.status})`);
+      for (let i = 0; i < 360; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        const st = (await (await fetch(`/api/reel/job?job=${start.job}`, { cache: "no-store" })).json()) as {
+          phase?: string;
+          done?: { videoUrl: string };
+          error?: string;
+        };
+        if (st.phase) setReelPhase(st.phase);
+        if (st.error) throw new Error(st.error);
+        if (st.done) {
+          setReelMeta({ videoFile: "reel.mp4", imageFiles: [], createdAt: new Date().toISOString() });
+          setCardView("reel");
+          return;
         }
       }
+      throw new Error("Reel generation timed out");
     } catch (err) {
       setReelError(err instanceof Error ? err.message : "Reel generation failed");
     } finally {
