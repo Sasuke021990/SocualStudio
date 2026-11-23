@@ -5,6 +5,7 @@ import { buildResearchAnalysisPrompt } from "@/features/competitor-research/prom
 import { getProviderConfig } from "@/features/ai-provider/store";
 import { OpenAICompatibleProvider } from "@/features/ai-provider";
 import { acquireToolset } from "@/features/mcp-client/registry";
+import { prepareForLlm } from "@/features/ai-provider/gpu";
 import { freeComfyUIModels } from "@/features/comfyui/free";
 
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -26,7 +27,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   const provider = new OpenAICompatibleProvider(config);
 
   try {
-    const toolset = await acquireToolset("research");
+    await prepareForLlm();
+            const toolset = await acquireToolset("research");
     const analysis = await provider.generateContent({
       config,
       system,

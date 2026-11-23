@@ -10,6 +10,7 @@ import { buildAdVariantGenerationPrompt } from "@/features/ad-generation/prompts
 import { getProviderConfig } from "@/features/ai-provider/store";
 import { OpenAICompatibleProvider } from "@/features/ai-provider";
 import { acquireToolset } from "@/features/mcp-client/registry";
+import { prepareForLlm } from "@/features/ai-provider/gpu";
 import { freeComfyUIModels } from "@/features/comfyui/free";
 import { getBrandBrain } from "@/features/brand-brain/store";
 
@@ -55,7 +56,8 @@ export async function POST(request: Request) {
     });
 
     try {
-      const toolset = await acquireToolset("contentGeneration");
+      await prepareForLlm();
+            const toolset = await acquireToolset("contentGeneration");
       const generated = await provider.generateContent({
         config,
         system,

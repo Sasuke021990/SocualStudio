@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getProviderConfig } from "@/features/ai-provider/store";
 import { OpenAICompatibleProvider } from "@/features/ai-provider";
 import { acquireToolset } from "@/features/mcp-client/registry";
+import { prepareForLlm } from "@/features/ai-provider/gpu";
 import { freeComfyUIModels } from "@/features/comfyui/free";
 import type { ProviderConfig } from "@/features/ai-provider/types";
 
@@ -111,7 +112,8 @@ Schema:
 Extract as much detail as possible. Use arrays even for single items. If information is missing, use empty arrays or descriptive strings based on inference from the source.`;
 
   try {
-    const toolset = await acquireToolset("brandExtraction");
+    await prepareForLlm();
+            const toolset = await acquireToolset("brandExtraction");
     const result = await provider.generateContent<BrandExtraction>({
       config,
       system: systemPrompt,

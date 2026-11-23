@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { getProviderConfig } from "@/features/ai-provider/store";
 import { OpenAICompatibleProvider } from "@/features/ai-provider";
+import { prepareForLlm } from "@/features/ai-provider/gpu";
 import { reelSpecSchema, type ReelSpec } from "./schemas";
 
 const creativeSchema = z.object({
@@ -97,6 +98,7 @@ function assemble(input: PlanReelInput, creative: Creative): ReelSpec {
 
 /** Viral Director: creative fields only — all timing math lives in the composer. */
 export async function planReelSpec(input: PlanReelInput, signal?: AbortSignal): Promise<{ spec: ReelSpec; hookScore: number }> {
+  await prepareForLlm();
   const config = await getProviderConfig();
   const provider = new OpenAICompatibleProvider(config);
   const system = buildSystem(input);

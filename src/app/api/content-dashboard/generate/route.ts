@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getProviderConfig } from "@/features/ai-provider/store";
 import { OpenAICompatibleProvider } from "@/features/ai-provider";
 import { acquireToolset } from "@/features/mcp-client/registry";
+import { prepareForLlm } from "@/features/ai-provider/gpu";
 import { freeComfyUIModels } from "@/features/comfyui/free";
 import { imageConceptSchema } from "@/features/content-dashboard/variations";
 import type { ProviderConfig } from "@/features/ai-provider/types";
@@ -122,6 +123,7 @@ Return ONLY valid JSON — no markdown fences, no prose.`;
           try {
             // PHASE 1: caption
             send({ phase: `Variation ${i + 1}/${count} - writing caption...` });
+            await prepareForLlm();
             const toolset =
               parsed.data.useMcp === false
                 ? null

@@ -130,9 +130,11 @@ export default function WorkspaceClient() {
     caption,
     hashtags,
     cta,
-    generatedImage: image?.url ?? null,
-    voiceAudio: audio?.url ?? null,
-    sfxAudio: sfx?.audio.url ?? null,
+    // Omit absent media — a stale tab's save must never wipe assets generated
+    // elsewhere (regeneration overwrites; there is no delete-media action).
+    ...(image?.url ? { generatedImage: image.url } : {}),
+    ...(audio?.url ? { voiceAudio: audio.url } : {}),
+    ...(sfx?.audio.url ? { sfxAudio: sfx.audio.url } : {}),
     ...(reelSpec ? { reelSpec } : {}),
     ...(reelMeta ? { reel: reelMeta } : {}),
   });

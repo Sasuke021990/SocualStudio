@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getProviderConfig } from "@/features/ai-provider/store";
 import { OpenAICompatibleProvider } from "@/features/ai-provider";
 import { acquireToolset } from "@/features/mcp-client/registry";
+import { prepareForLlm } from "@/features/ai-provider/gpu";
 import { freeComfyUIModels } from "@/features/comfyui/free";
 import { aiGenerateRequestSchema } from "@/features/ai-provider/schemas";
 import type { ProviderConfig } from "@/features/ai-provider/types";
@@ -29,7 +30,8 @@ export async function POST(request: Request) {
   const provider = new OpenAICompatibleProvider(config);
 
   const encoder = new TextEncoder();
-  const toolset = await acquireToolset("contentGeneration");
+  await prepareForLlm();
+            const toolset = await acquireToolset("contentGeneration");
   const stream = provider.streamChat({ config, messages: parsed.data.messages, toolset: toolset ?? undefined });
 
   const response = new Response(

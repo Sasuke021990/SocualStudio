@@ -92,7 +92,11 @@ export async function updateContentItem(
   if (!item) return null;
   if (patch.title !== undefined) item.title = patch.title;
   if (patch.output !== undefined) item.output = patch.output;
-  if (patch.variation !== undefined) item.variation = patch.variation;
+  if (patch.variation !== undefined) {
+    // Merge: clients send the fields they know — never wipe fields they omit
+    // (e.g. reelSpec/reel must survive saves from tabs loaded before they existed).
+    item.variation = { ...item.variation, ...patch.variation };
+  }
   item.updatedAt = now();
   await persist([...all]);
   return { ...item };
