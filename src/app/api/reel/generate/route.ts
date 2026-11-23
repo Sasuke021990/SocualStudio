@@ -172,12 +172,15 @@ async function runReelJob(job: ReelJob, deps: RunDeps): Promise<void> {
     job.phase = "Done";
     finishReelJob(job.id);
   } catch (err) {
-    job.error =
+    const raw =
       err instanceof ReelStepError
         ? `OpenReel step failed — ${err.stepLabel}: ${err.message.replace(err.stepLabel + ": ", "")}`
         : err instanceof Error
           ? err.message
           : "Reel generation failed";
+    job.error = /fetch failed/i.test(raw)
+      ? "OpenReel is not reachable — open the OpenReel desktop app and try again."
+      : raw;
     job.phase = "Failed";
     finishReelJob(job.id);
   } finally {

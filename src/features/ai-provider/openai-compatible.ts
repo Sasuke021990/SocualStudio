@@ -79,6 +79,9 @@ export class OpenAICompatibleProvider implements AIProvider {
     return new OpenAI({
       baseURL: baseUrl,
       apiKey: this.config.apiKey ?? defaultApiKey(),
+      // Local models load slowly and answer slowly — never cut them off early.
+      timeout: 600_000,
+      maxRetries: 1,
     });
   }
 

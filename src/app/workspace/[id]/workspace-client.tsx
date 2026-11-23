@@ -211,19 +211,26 @@ export default function WorkspaceClient() {
       });
       const start = (await res.json()) as { job?: string; error?: string };
       if (!res.ok || !start.job) throw new Error(start.error ?? `Request failed (${res.status})`);
-      for (let i = 0; i < 360; i++) {
+      for (let i = 0, failures = 0; i < 360; i++) {
         await new Promise((resolve) => setTimeout(resolve, 2500));
-        const st = (await (await fetch(`/api/reel/job?job=${start.job}`, { cache: "no-store" })).json()) as {
-          phase?: string;
-          done?: { videoUrl: string };
-          error?: string;
-        };
-        if (st.phase) setReelPhase(st.phase);
-        if (st.error) throw new Error(st.error);
-        if (st.done) {
-          setReelMeta({ videoFile: "reel.mp4", imageFiles: [], createdAt: new Date().toISOString() });
-          setCardView("reel");
-          return;
+        try {
+          const st = (await (await fetch(`/api/reel/job?job=${start.job}`, { cache: "no-store" })).json()) as {
+            phase?: string;
+            done?: { videoUrl: string };
+            error?: string;
+          };
+          failures = 0;
+          if (st.phase) setReelPhase(st.phase);
+          if (st.error) throw new Error(st.error);
+          if (st.done) {
+            setReelMeta({ videoFile: "reel.mp4", imageFiles: [], createdAt: new Date().toISOString() });
+            setCardView("reel");
+            return;
+          }
+        } catch (err) {
+          if (err instanceof Error && err.message && !/fetch|network|load/i.test(err.message)) throw err;
+          // Transient network blip — the job runs server-side; keep polling.
+          if (++failures >= 20) throw new Error("Connection lost while generating — the reel may still finish; reopen the post.");
         }
       }
       throw new Error("Reel generation timed out");

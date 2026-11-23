@@ -8,7 +8,7 @@ import type { ProviderConfig } from "./types";
 export async function preloadLocalModel(config: ProviderConfig): Promise<void> {
   try {
     const baseUrl = config.baseUrl || "http://127.0.0.1:1235/v1";
-    const client = new OpenAI({ baseURL: baseUrl, apiKey: config.apiKey ?? "sk-no-authenticated-key" });
+    const client = new OpenAI({ baseURL: baseUrl, apiKey: config.apiKey ?? "sk-no-authenticated-key", timeout: 600_000 });
     await client.chat.completions.create({
       model: config.model,
       messages: [{ role: "user", content: "hi" }],
