@@ -27,6 +27,10 @@ import { SFX_OUTPUT_DIR } from "@/features/voice/sfx";
 const generateRequestSchema = z.object({
   itemId: z.string().min(1),
   connectionId: z.string().optional(),
+  /** Client-side media — sent so unsaved assets still work. */
+  voiceUrl: z.string().optional(),
+  sfxUrl: z.string().optional(),
+  imageUrl: z.string().optional(),
 });
 
 function audioFileName(url: string | null | undefined): string | null {
@@ -65,8 +69,8 @@ export async function POST(request: Request) {
   const spec = variation?.reelSpec as ReelSpec | undefined;
   if (!spec) return NextResponse.json({ error: "No reel plan — generate a plan first" }, { status: 400 });
 
-  const voiceFile = audioFileName(variation?.voiceAudio);
-  const musicFile = audioFileName(variation?.sfxAudio);
+  const voiceFile = audioFileName(parsed.data.voiceUrl ?? variation?.voiceAudio);
+  const musicFile = audioFileName(parsed.data.sfxUrl ?? variation?.sfxAudio);
   if (!voiceFile || !musicFile) {
     return NextResponse.json(
       { error: "Generate voice-over and sound first — the reel needs both." },
@@ -95,6 +99,7 @@ export async function POST(request: Request) {
     spec,
     voiceFile,
     musicFile,
+    existingImageUrl: parsed.data.imageUrl ?? variation?.generatedImage ?? undefined,
     connection,
     openreel,
   });
@@ -109,19 +114,29 @@ interface RunDeps {
   spec: ReelSpec;
   voiceFile: string;
   musicFile: string;
+  existingImageUrl?: string;
   connection: NonNullable<Awaited<ReturnType<typeof getActiveConnection>>>;
   openreel: NonNullable<Awaited<ReturnType<typeof getMcpConfig>>["servers"][number]>;
 }
 
 async function runReelJob(job: ReelJob, deps: RunDeps): Promise<void> {
-  const { itemId, itemTitle, variation, spec, voiceFile, musicFile, connection, openreel } = deps;
+  const { itemId, itemTitle, variation, spec, voiceFile, musicFile, existingImageUrl, connection, openreel } = deps;
   let unloaded = false;
   try {
     // ── 1. Storyboard images (VRAM: unload LLM first, free Comfy after) ──
     await unloadLocalModel(await getProviderConfig());
     unloaded = true;
     const imagePaths: string[] = [];
-    for (let i = 0; i < spec.imageCount; i++) {
+    // The post's generated image becomes storyboard shot 1 — only the missing
+    // shots are generated fresh.
+    if (existingImageUrl) {
+      job.phase = "Using existing image…";
+      const absUrl = existingImageUrl.startsWith("http")
+        ? existingImageUrl
+        : `http://127.0.0.1:3000${existingImageUrl}`;
+      imagePaths.push(await downloadIntoReelDir(itemId, absUrl, "img0.png"));
+    }
+    for (let i = imagePaths.length; i < spec.imageCount; i++) {
       job.phase = `Generating image ${i + 1}/${spec.imageCount}…`;
       // Reel storyboard images are 9:16 — they must fill the vertical frame.
       const images = await generateComfyImages(connection, spec.imageBriefs[i], undefined, { width: 720, height: 1280 });

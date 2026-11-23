@@ -207,7 +207,13 @@ export default function WorkspaceClient() {
       const res = await fetch("/api/reel/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itemId: id, connectionId: toolId ?? undefined }),
+        body: JSON.stringify({
+          itemId: id,
+          connectionId: toolId ?? undefined,
+          voiceUrl: audio?.url,
+          sfxUrl: sfx?.audio.url,
+          imageUrl: image?.url,
+        }),
       });
       const start = (await res.json()) as { job?: string; error?: string };
       if (!res.ok || !start.job) throw new Error(start.error ?? `Request failed (${res.status})`);
