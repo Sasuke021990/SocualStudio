@@ -8,6 +8,7 @@ import { acquireToolset } from "@/features/mcp-client/registry";
 import { freeComfyUIModels } from "@/features/comfyui/free";
 import { unloadLocalModel } from "@/features/ai-provider/unload";
 import { generateSoundEffect, SFX_OUTPUT_DIR, sfxAvailable } from "@/features/voice/sfx";
+import { INDIA_SOUND_CONTEXT } from "@/features/prompts/india";
 import type { ProviderConfig } from "@/features/ai-provider/types";
 
 const requestSchema = z.object({
@@ -53,12 +54,14 @@ export async function POST(request: Request) {
     await freeComfyUIModels();
     const provider = new OpenAICompatibleProvider(config);
 
-    const systemPrompt = `You are a sound designer for social media posts. Write ONE concise sound-effect description (max 30 words) for a sound bed that matches the post's mood, message, and visual.
+    const systemPrompt = `You are a sound designer for top-trending social media content in India. Write ONE concise sound description (max 30 words) for a punchy, attention-grabbing sound bed that matches the post's mood, message, and visual.
+
+${INDIA_SOUND_CONTEXT}
 
 Rules:
-- Describe concrete, evocative sounds (textures, rhythms, ambience) — not music melodies
+- Trending Reels/Shorts energy: hook-y, satisfying, scroll-stopping — layered beats, risers, whooshes, emotional builds, festival or desi percussion where it fits
 - Match the emotion of the caption exactly
-- Include 2-3 layered sound elements
+- Include 2-3 layered concrete elements (beat texture, accent sound, ambience)
 - Plain descriptive English, no hashtags or quotes
 
 Schema: { "soundPrompt": string }`;

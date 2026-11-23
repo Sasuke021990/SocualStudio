@@ -7,7 +7,6 @@ import { getComfyUIState, getActiveConnection } from "@/features/comfyui/store";
 import { generateComfyImages } from "@/features/comfyui/generate";
 import { freeComfyUIModels } from "@/features/comfyui/free";
 import { unloadLocalModel } from "@/features/ai-provider/unload";
-import { preloadLocalModel } from "@/features/ai-provider/preload";
 import { getProviderConfig } from "@/features/ai-provider/store";
 import { getMcpConfig } from "@/features/mcp-client/store";
 import { composeReelPlan } from "@/features/reel/composer";
@@ -206,7 +205,7 @@ async function runReelJob(job: ReelJob, deps: RunDeps): Promise<void> {
     job.phase = "Failed";
     finishReelJob(job.id);
   } finally {
-    // VRAM is free again — warm the model back so planning/LLM calls stay instant.
-    if (unloaded) void preloadLocalModel(await getProviderConfig());
+    // LLM stays unloaded after generation — it loads on demand for the next
+    // content call (VRAM stays free for the GPU while idle).
   }
 }

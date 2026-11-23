@@ -3,7 +3,6 @@ import { z } from "zod";
 import { getActiveConnection, getComfyUIState } from "@/features/comfyui/store";
 import { getProviderConfig } from "@/features/ai-provider/store";
 import { unloadLocalModel } from "@/features/ai-provider/unload";
-import { preloadLocalModel } from "@/features/ai-provider/preload";
 import { generateComfyImages } from "@/features/comfyui/generate";
 
 const generateSchema = z.object({
@@ -61,8 +60,5 @@ export async function POST(request: Request) {
     const msg = err instanceof Error ? err.message : "Image generation failed";
     const status = /timed out/i.test(msg) ? 504 : /rejected|no ComfyUI|workflow/i.test(msg) ? 400 : 500;
     return NextResponse.json({ error: msg }, { status });
-  } finally {
-    // VRAM is free again — warm the LLM back so planning stays instant.
-    void preloadLocalModel(providerConfig);
   }
 }

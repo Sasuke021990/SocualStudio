@@ -100,6 +100,7 @@ export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { proj
   if (Math.abs(clamped - 1) > 0.01) {
     steps.push({ label: `Fit voice to ${D}s`, tool: "set_clip_speed", args: { clipId: clipToken("voice"), speed: clamped } });
   }
+  steps.push({ label: "Voice loudness", tool: "normalize_clip_loudness", args: { clipId: clipToken("voice"), targetLufs: -14 } });
 
   // Music covers the whole reel, quiet, with fades
   if (assets.musicSeconds < D - 0.2) {
@@ -111,6 +112,7 @@ export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { proj
   } else {
     steps.push({ label: `Trim music to ${D}s`, tool: "trim_clip", args: { clipId: clipToken("music"), inPoint: 0, outPoint: D } });
   }
+  steps.push({ label: "Music loudness", tool: "normalize_clip_loudness", args: { clipId: clipToken("music"), targetLufs: -14 } });
   steps.push({ label: "Music volume", tool: "set_clip_volume", args: { clipId: clipToken("music"), volume: spec.audio.musicVolume } });
   steps.push({
     label: "Music fades",

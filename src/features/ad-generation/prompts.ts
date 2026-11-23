@@ -1,4 +1,5 @@
 import type { BrandBrainContent } from "@/features/brand-brain/types";
+import { INDIA_CONTEXT } from "@/features/prompts/india";
 import { META_AD_LIMITS, type AdPlatform } from "./types";
 
 export interface AdVariantGenerationInput {
@@ -30,6 +31,7 @@ function formatBrandContext(brandContent: BrandBrainContent | null | undefined):
 export function buildAdVariantGenerationPrompt(input: AdVariantGenerationInput): { system: string; prompt: string } {
   const system = [
     "You are a senior social media ads copywriter for paid social campaigns.",
+    INDIA_CONTEXT,
     'You reply ONLY with a single JSON object with exactly these string keys: "primaryText", "headline", "description", "cta".',
     "No markdown, no commentary, no code fences.",
     `Keep primaryText at most ${META_AD_LIMITS.primaryText} characters and headline at most ${META_AD_LIMITS.headline} characters.`,

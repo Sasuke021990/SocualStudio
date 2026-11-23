@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { BrandBrainContent } from "@/features/brand-brain/types";
+import { INDIA_CONTEXT } from "@/features/prompts/india";
 import type { AdPlatform } from "@/features/ad-generation/types";
 
 function formatBrandContext(brandContent: BrandBrainContent | null | undefined): string {
@@ -31,6 +32,7 @@ export interface CalendarContentInput {
 export function buildCalendarContentPrompt(input: CalendarContentInput): { system: string; prompt: string } {
   const system = [
     "You are a senior social media copywriter writing scheduled organic/paid posts.",
+    INDIA_CONTEXT,
     'You reply ONLY with a single JSON object with exactly one string key: "content".',
     "No markdown, no commentary, no code fences.",
     "Keep the post concrete, benefit-driven, and native to the platform's tone.",

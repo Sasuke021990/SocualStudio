@@ -3,6 +3,7 @@ import { getProviderConfig } from "@/features/ai-provider/store";
 import { OpenAICompatibleProvider } from "@/features/ai-provider";
 import { prepareForLlm } from "@/features/ai-provider/gpu";
 import { reelSpecSchema, type ReelSpec } from "./schemas";
+import { INDIA_CONTEXT, INDIA_IMAGE_CONTEXT } from "@/features/prompts/india";
 
 const creativeSchema = z.object({
   hookScore: z.number().min(1).max(10),
@@ -47,6 +48,10 @@ function buildSystem(input: PlanReelInput): string {
   return `You are the Viral Director for short-form vertical reels. You write the NARRATION SCRIPT and the IMAGE STORYBOARD for a ${input.durationSeconds}-second 9:16 reel for the brand "${input.brandName}".
 
 GOAL: maximum retention and views. The narration doubles as on-screen captions, so it must work muted AND spoken.
+
+${INDIA_CONTEXT}
+
+${INDIA_IMAGE_CONTEXT}
 
 HOOK (first line): pick exactly ONE formula from this library and apply it:
 ${HOOK_LIBRARY.map((h, i) => `${i + 1}. ${h}`).join("\n")}

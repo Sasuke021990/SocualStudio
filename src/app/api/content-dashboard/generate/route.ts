@@ -7,6 +7,7 @@ import { prepareForLlm } from "@/features/ai-provider/gpu";
 import { freeComfyUIModels } from "@/features/comfyui/free";
 import { imageConceptSchema } from "@/features/content-dashboard/variations";
 import type { ProviderConfig } from "@/features/ai-provider/types";
+import { INDIA_CONTEXT, INDIA_IMAGE_CONTEXT } from "@/features/prompts/india";
 
 const requestSchema = z.object({
   brandName: z.string().min(1),
@@ -68,6 +69,8 @@ export async function POST(request: Request) {
 
   const captionSystemPrompt = `You are an expert ${platform} content copywriter for the brand "${brandName}".
 ${goalPrompt ? `GOAL: ${goalPrompt}\n` : ""}${brandContext ? `BRAND CONTEXT:\n${brandContext}\n` : ""}
+${INDIA_CONTEXT}
+
 Generate ONE ${contentType} variation${topic ? ` about "${topic}"` : ""} — caption only.
 
 ENGAGEMENT RULES:
@@ -89,6 +92,8 @@ Return ONLY valid JSON — no markdown fences, no prose.`;
 
   const imageSystemPrompt = `You are a professional photography director creating an image for a ${platform} post.
 The image MUST visually depict the exact message, metaphor, and emotion of the caption below. Books, generic stock imagery, or unrelated objects are FORBIDDEN.
+
+${INDIA_IMAGE_CONTEXT}
 
 IMAGE RULES:
 1. VISUAL-CAPTION MATCH: the image must tell the caption's story — same theme, same metaphor. If caption is about money planning, show money/planning visuals (coins organizing, charts, piggy banks with blueprints), NOT books or random objects.

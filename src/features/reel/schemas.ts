@@ -30,7 +30,7 @@ export const reelSpecSchema = z
         fadeInSec: z.number().min(0).max(5),
         fadeOutSec: z.number().min(0).max(5),
       })
-      .default({ musicVolume: 0.25, fadeInSec: 1, fadeOutSec: 2 }),
+      .default({ musicVolume: 0.4, fadeInSec: 1, fadeOutSec: 2 }),
     captions: z
       .strictObject({
         position: z.literal("bottom"),
