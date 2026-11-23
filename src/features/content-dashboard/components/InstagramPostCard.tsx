@@ -91,6 +91,7 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
       });
       const data = (await res.json()) as { audio?: GeneratedAudio; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Voice generation failed");
+      if (!data.audio) throw new Error("Voice engine returned no audio — try again");
       if (data.audio) {
         setAudio(data.audio);
         onMediaChange?.(variation.id, { voiceAudio: data.audio.url });
@@ -124,6 +125,7 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
       });
       const data = (await res.json()) as GeneratedSfx & { error?: string };
       if (!res.ok) throw new Error(data.error ?? "Sound generation failed");
+      if (!data.audio?.url) throw new Error("Sound engine returned no audio — try again");
       setSfx(data);
       onMediaChange?.(variation.id, { sfxAudio: data.audio.url });
     } catch (err) {

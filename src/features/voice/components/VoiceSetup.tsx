@@ -85,6 +85,7 @@ export function VoiceSetup() {
       });
       const data = await res.json() as { audio?: { url: string }; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Generation failed");
+      if (!data.audio) throw new Error("Voice engine returned no audio — try again");
       if (data.audio) {
         const el = new Audio(data.audio.url);
         exclusivePlay(el);

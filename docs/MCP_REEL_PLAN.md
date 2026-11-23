@@ -76,3 +76,12 @@ UI (workspace-client.tsx):
 5. `dismiss_onboarding` first; projects: `create_project({name,width:1080,height:1920,frameRate:30})`.
 6. **Text position:** `create_text_clip` `style.position` is **ignored** (renders center). Bottom text = **`add_subtitle` cues + `set_caption_style({style:{position:"bottom", fontSize, color, strokeColor/Width, shadow*, safeMargin}})`** — verified by frame render (`export_image_sequence` → PNG).
 7. Visual self-check loop: `export_image_sequence` (2-frame range → zip → PNG) then read the PNG — no ffmpeg needed.
+
+## Runtime fixes (post-implementation hardening)
+- **Format-matched image sizes:** `injectPrompt` now injects target dimensions into the workflow's latent nodes — reel/story images **720×1280 (9:16, full-frame, no letterbox)**, post images **1024×1024 (1:1)**. `/api/comfyui/generate` accepts optional `width`/`height`.
+- **LLM warm-back:** generation unloads the LLM from VRAM first (policy preserved) and **preloads it again afterwards** (`features/ai-provider/preload.ts`) so planning stays instant instead of hitting a cold model.
+- **Render timeout:** MCP tool calls allow up to 10 min (exports take minutes).
+- **max_tokens cap (4096)** on structured LLM outputs — prevents truncated JSON.
+- **Planner output clamping:** imageBriefs/musicMood/cta clamped to schema limits; empty briefs sanitized with fallbacks (models vary in verbosity).
+- **Hook gate:** ≥ 7/10, 3 attempts, retry feedback carries the real score.
+- **Silent-failure guards:** voice/sound generation surfaces "engine returned no audio" instead of doing nothing.

@@ -294,7 +294,8 @@ export default function WorkspaceClient() {
       });
       const data = await res.json() as { audio?: { url: string }; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Voice generation failed");
-      if (data.audio) setAudio(data.audio);
+      if (!data.audio) throw new Error("Voice engine returned no audio — try again");
+      setAudio(data.audio);
     } catch (err) {
       setAudioError(err instanceof Error ? err.message : "Voice generation failed");
     } finally {
@@ -321,7 +322,8 @@ export default function WorkspaceClient() {
       });
       const data = await res.json() as { soundPrompt?: string; audio?: { url: string }; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Sound generation failed");
-      if (data.audio) setSfx({ soundPrompt: data.soundPrompt ?? soundPrompt, audio: data.audio });
+      if (!data.audio) throw new Error("Sound engine returned no audio — try again");
+      setSfx({ soundPrompt: data.soundPrompt ?? soundPrompt, audio: data.audio });
     } catch (err) {
       setSfxError(err instanceof Error ? err.message : "Sound generation failed");
     } finally {
