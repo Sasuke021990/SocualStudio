@@ -12,6 +12,15 @@ export interface ComfyImageResult {
   viewUrl: string;
 }
 
+function aspectStringFor(width: number, height: number): string {
+  const r = width / height;
+  if (r < 0.65) return "9:16 (Portrait Widescreen)";
+  if (r >= 0.75 && r <= 0.85) return "4:5 (Portrait)";
+  if (r >= 0.9 && r <= 1.1) return "1:1 (Square)";
+  if (r > 1.5) return "16:9 (Widescreen)";
+  return "9:16 (Portrait Widescreen)";
+}
+
 /** Inject prompt text into workflow's text-encode nodes and randomize seeds. */
 export function injectPrompt(
   workflow: Record<string, unknown>,
@@ -23,6 +32,7 @@ export function injectPrompt(
   for (const [, node] of Object.entries(cloned)) {
     if (!node || typeof node !== "object" || !node.inputs) continue;
     const ct = node.class_type ?? "";
+
     // CLIPTextEncode nodes carry positive/negative prompts
     if (ct === "CLIPTextEncode" || ct === "CLIPTextEncodeSDXL" || ct === "CLIPTextEncodeSDXLRefiner") {
       const current = String(node.inputs.text ?? "");
@@ -34,23 +44,44 @@ export function injectPrompt(
       }
     }
 
+    // AUSBOSS text node (Qwen2.1 Turbo)
+    if (ct === "AUSBOSS_NODES_Text" && "text" in node.inputs) {
+      node.inputs.text = prompt;
+    }
+
     // Qwen image pipelines: TextEncodeQwenImage21 (encoder) + TextGenerate (prompt-rewriter LLM).
     if (ct.startsWith("TextEncodeQwen")) {
-      if ("prompt" in node.inputs) {
+      if ("prompt" in node.inputs && !Array.isArray(node.inputs.prompt)) {
         node.inputs.prompt = prompt;
       }
-      if (negativePrompt && "negative_prompt" in node.inputs) {
+      if (negativePrompt && "negative_prompt" in node.inputs && !Array.isArray(node.inputs.negative_prompt)) {
         node.inputs.negative_prompt = negativePrompt;
       }
     }
-    if (ct === "TextGenerate" && "prompt" in node.inputs) {
+    if (ct === "TextGenerate" && "prompt" in node.inputs && !Array.isArray(node.inputs.prompt)) {
       node.inputs.prompt = prompt;
     }
 
-    // Output size: honour the caller's target format (reel 9:16, post 1:1, …)
-    if (size && (ct.includes("EmptyLatentImage") || ct.includes("EmptySD3LatentImage"))) {
-      if ("width" in node.inputs) node.inputs.width = size.width;
-      if ("height" in node.inputs) node.inputs.height = size.height;
+    // Universal Aspect Ratio & Output size adapter across all 4 tools
+    if (size) {
+      // 1. ResolutionSelector dropdown string (Kera 2, Simple Qwen 2.1)
+      if (ct === "ResolutionSelector" || "aspect_ratio" in node.inputs) {
+        node.inputs.aspect_ratio = aspectStringFor(size.width, size.height);
+      }
+      // 2. AUSBOSS Resolution node (Qwen2.1 Turbo)
+      if (ct === "AUSBOSS_NODES_Resolution") {
+        node.inputs.width = size.width;
+        node.inputs.height = size.height;
+      }
+      // 3. EmptyLatentImage / EmptySD3LatentImage / custom latent generators
+      if (ct.includes("LatentImage") || ct.includes("Resolution")) {
+        if ("width" in node.inputs && typeof node.inputs.width === "number") {
+          node.inputs.width = size.width;
+        }
+        if ("height" in node.inputs && typeof node.inputs.height === "number") {
+          node.inputs.height = size.height;
+        }
+      }
     }
 
     // Randomize seeds so each generation produces a different image.

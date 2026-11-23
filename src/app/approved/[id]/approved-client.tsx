@@ -7,6 +7,8 @@ import type { ContentItem } from "@/features/content-dashboard/types";
 import { BackPill } from "@/components/nav";
 import { IconImage } from "@/components/icons";
 import { exclusivePlay } from "@/features/voice/audio-coordinator";
+import { MobileDeviceFrame } from "@/components/preview/MobileDeviceFrame";
+import { ReelPlayer } from "@/components/preview/ReelPlayer";
 
 export default function ApprovedClient() {
   const params = useParams<{ id: string }>();
@@ -17,6 +19,7 @@ export default function ApprovedClient() {
   const [exporting, setExporting] = useState(false);
   const [exportResult, setExportResult] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [cardView, setCardView] = useState<"image" | "reel">("image");
 
   useEffect(() => {
     let cancelled = false;
@@ -150,26 +153,72 @@ export default function ApprovedClient() {
         </aside>
 
         {/* MAIN: post preview */}
-        <section className="mx-auto w-full" style={{ maxWidth: 420 }}>
-          <div className="overflow-hidden rounded-2xl border-2 border-zinc-200 dark:border-zinc-700" style={{ background: "#fff" }}>
-            <div className="flex items-center gap-2.5 px-3.5 py-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: "linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" }}>
-                {current.brandName.charAt(0).toUpperCase()}
-              </div>
-              <div className="text-[13px] font-semibold" style={{ color: "#262626" }}>{handle}</div>
-            </div>
-
-            <div className="relative flex aspect-square items-center justify-center overflow-hidden" style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}>
-              {v?.generatedImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={v.generatedImage} alt={current.title} className="absolute inset-0 h-full w-full object-cover" />
-              ) : (
-                <div className="relative z-10 px-6 text-center text-white">
-                  <IconImage size={40} className="text-white/90" />
-                  <p className="mt-2 text-xs opacity-80">{current.title}</p>
+        <section className="mx-auto flex w-full justify-center" style={{ maxWidth: 420 }}>
+          {cardView === "reel" && v?.reel ? (
+            <MobileDeviceFrame
+              viewToggle={
+                <div className="flex gap-1 rounded-full bg-black/60 p-0.5 backdrop-blur-md ring-1 ring-white/10">
+                  {(["image", "reel"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      aria-pressed={cardView === mode}
+                      onClick={() => setCardView(mode)}
+                      className={`cursor-pointer rounded-full px-2.5 py-0.5 text-[10px] font-semibold capitalize transition ${
+                        cardView === mode ? "bg-white text-zinc-900 shadow-sm" : "text-white/80 hover:text-white"
+                      }`}
+                    >
+                      {mode}
+                    </button>
+                  ))}
                 </div>
-              )}
-            </div>
+              }
+            >
+              <ReelPlayer
+                src={`/api/reel/file?item=${current.id}`}
+                brandName={current.brandName}
+                handle={handle}
+                caption={v?.caption ?? current.title}
+                hashtags={v?.hashtags ?? []}
+              />
+            </MobileDeviceFrame>
+          ) : (
+            <div className="w-full overflow-hidden rounded-2xl border-2 border-zinc-200 dark:border-zinc-700" style={{ background: "#fff" }}>
+              <div className="flex items-center gap-2.5 px-3.5 py-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: "linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" }}>
+                  {current.brandName.charAt(0).toUpperCase()}
+                </div>
+                <div className="text-[13px] font-semibold" style={{ color: "#262626" }}>{handle}</div>
+              </div>
+
+              <div className="relative flex aspect-square items-center justify-center overflow-hidden" style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}>
+                {v?.reel && (
+                  <div className="absolute left-3 top-3 z-20 flex gap-1.5">
+                    {(["image", "reel"] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        aria-pressed={cardView === mode}
+                        onClick={() => setCardView(mode)}
+                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize backdrop-blur-sm transition ${
+                          cardView === mode ? "bg-white text-zinc-800" : "bg-black/50 text-white hover:bg-black/70"
+                        }`}
+                      >
+                        {mode}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {v?.generatedImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={v.generatedImage} alt={current.title} className="absolute inset-0 h-full w-full object-cover" />
+                ) : (
+                  <div className="relative z-10 px-6 text-center text-white">
+                    <IconImage size={40} className="text-white/90" />
+                    <p className="mt-2 text-xs opacity-80">{current.title}</p>
+                  </div>
+                )}
+              </div>
 
             <div className="flex items-center gap-3 px-3.5 py-2.5">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -204,6 +253,7 @@ export default function ApprovedClient() {
               </div>
             )}
           </div>
+          )}
         </section>
       </div>
     </main>

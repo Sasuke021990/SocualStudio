@@ -1,11 +1,71 @@
 import { z } from "zod";
 
+export const reelStyleSchema = z.enum(["high-energy", "cinematic", "tech-explainer", "minimalist"]);
+export type ReelStyle = z.infer<typeof reelStyleSchema>;
+
+export const kineticPopupSchema = z.object({
+  text: z.string().min(1).max(30),
+  startTime: z.number().min(0),
+  duration: z.number().min(0.4).max(3.0),
+  position: z.enum(["center", "upper-center"]).default("center"),
+  color: z.string().default("#FFE600"),
+  strokeColor: z.string().default("#000000"),
+  fontSize: z.number().min(30).max(120).default(76),
+});
+export type KineticPopup = z.infer<typeof kineticPopupSchema>;
+
+export const transitionTypeSchema = z.enum([
+  "whipPan",
+  "glitch",
+  "zoom",
+  "crossfade",
+  "filmBurn",
+  "push",
+  "radialWipe",
+  "blur",
+]);
+export type TransitionType = z.infer<typeof transitionTypeSchema>;
+
+export const videoEffectSchema = z.enum([
+  "chromatic-aberration",
+  "vhs-glitch",
+  "vignette",
+  "lens-flare",
+  "motion-blur",
+  "glow",
+]);
+export type VideoEffect = z.infer<typeof videoEffectSchema>;
+
+export function repairKineticPopups(popups: unknown, narration: string, duration: number): KineticPopup[] {
+  const parsed = z.array(kineticPopupSchema).safeParse(popups);
+  if (parsed.success && parsed.data.length > 0) return parsed.data;
+
+  // Auto-extract high-impact words from the hook line
+  const firstSentence = narration.split(/[.!?]/)[0] ?? "";
+  const words = firstSentence.split(/\s+/).filter((w) => w.length >= 3);
+  const hookWords = words.slice(0, 3).join(" ").toUpperCase();
+
+  return [
+    {
+      text: hookWords || "WATCH THIS",
+      startTime: 0.2,
+      duration: Math.min(2.0, +(duration * 0.15).toFixed(2)),
+      position: "upper-center",
+      color: "#FFE600",
+      strokeColor: "#000000",
+      fontSize: 76,
+    },
+  ];
+}
+
 /** Strict ReelSpec — the only shape the planner may produce and the composer accepts. */
 export const reelSpecSchema = z
   .strictObject({
     version: z.literal(1),
     /** B-model contract: reels are always exactly 15 or 30 seconds. */
     durationSeconds: z.union([z.literal(15), z.literal(30)]),
+    /** Visual pacing style */
+    style: reelStyleSchema.default("high-energy"),
     /** How many storyboard images to generate and use (1–3). */
     imageCount: z.union([z.literal(1), z.literal(2), z.literal(3)]),
     /** Spoken narration — also the on-screen captions. */
@@ -21,6 +81,8 @@ export const reelSpecSchema = z
       }),
     /** One visual brief per image, following the narration beats. */
     imageBriefs: z.array(z.string().min(5).max(500)).min(1).max(3),
+    /** MrBeast-style punchy kinetic word popups for the hook. */
+    kineticPopups: z.array(kineticPopupSchema).default([]),
     /** Optional end-card text (shown in the last 20% of the reel). */
     cta: z.string().min(1).max(40).optional(),
     /** Mood hint for background music. */
@@ -39,20 +101,21 @@ export const reelSpecSchema = z
         fadeInSec: z.number().min(0).max(5),
         fadeOutSec: z.number().min(0).max(5),
       })
-      .default({ musicVolume: 0.4, fadeInSec: 1, fadeOutSec: 2 }),
+      .default({ musicVolume: 0.3, fadeInSec: 1, fadeOutSec: 2 }),
     captions: z
       .strictObject({
         position: z.literal("bottom"),
         fontSize: z.number().min(24).max(96),
         stroke: z.number().min(0).max(8),
-        safeMargin: z.number().min(0).max(0.25),
+        safeMargin: z.number().min(0).max(0.35),
       })
-      .default({ position: "bottom", fontSize: 52, stroke: 3, safeMargin: 0.06 }),
+      .default({ position: "bottom", fontSize: 52, stroke: 3, safeMargin: 0.20 }),
   })
   .superRefine((val, ctx) => {
     const words = val.narration.trim().split(/\s+/).length;
-    const minWords = val.durationSeconds === 15 ? 25 : 50;
-    const maxWords = val.durationSeconds === 15 ? 70 : 140;
+    // Calibrated for natural 2.6 words/sec speech (Solution C)
+    const minWords = val.durationSeconds === 15 ? 28 : 65;
+    const maxWords = val.durationSeconds === 15 ? 52 : 115;
     if (words < minWords || words > maxWords) {
       ctx.addIssue({
         code: "custom",
@@ -94,7 +157,9 @@ export function voiceSpeedFor(
   voiceSeconds: number,
   durationSeconds: number,
 ): { speed: number; quality: "good" | "acceptable" | "unusable" } {
-  const ratio = voiceSeconds / durationSeconds;
+  // Solution C: voice targets D - 0.5s for clean finish before reel loop
+  const targetSpeechSec = durationSeconds - 0.5;
+  const ratio = voiceSeconds / targetSpeechSec;
   const speed = Math.min(VOICE_SPEED_MAX, Math.max(VOICE_SPEED_MIN, ratio));
   const quality =
     ratio >= VOICE_GOOD_MIN && ratio <= VOICE_GOOD_MAX

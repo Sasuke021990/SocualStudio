@@ -2,7 +2,7 @@ import { z } from "zod";
 import { getProviderConfig } from "@/features/ai-provider/store";
 import { OpenAICompatibleProvider } from "@/features/ai-provider";
 import { prepareForLlm } from "@/features/ai-provider/gpu";
-import { reelSpecSchema, type ReelSpec } from "./schemas";
+import { reelSpecSchema, repairKineticPopups, type ReelSpec, type ReelStyle } from "./schemas";
 import { INDIA_CONTEXT, INDIA_IMAGE_CONTEXT } from "@/features/prompts/india";
 import { stripEmoji, stripHashtags } from "@/features/prompts/clean";
 
@@ -10,6 +10,15 @@ const creativeSchema = z.object({
   hookScore: z.number().min(1).max(10),
   narration: z.string(),
   imageBriefs: z.array(z.string()),
+  kineticPopups: z
+    .array(
+      z.object({
+        text: z.string(),
+        startTime: z.number().optional(),
+        duration: z.number().optional(),
+      })
+    )
+    .optional(),
   cta: z.string().optional(),
   musicMood: z.string().optional(),
 });
@@ -42,13 +51,18 @@ export interface PlanReelInput {
   reelPrompt: string;
   durationSeconds: 15 | 30;
   imageCount: 1 | 2 | 3;
+  style?: ReelStyle;
 }
 
 function buildSystem(input: PlanReelInput): string {
-  const words = input.durationSeconds === 15 ? "25–70" : "50–140";
-  return `You are the Viral Director for short-form vertical reels. You write the NARRATION SCRIPT and the IMAGE STORYBOARD for a ${input.durationSeconds}-second vertical reel for the brand "${input.brandName}".
+  // Calibrated for 2.6 words/sec natural speech cadence (Solution C)
+  const words = input.durationSeconds === 15 ? "38–42" : "82–92";
+  const style = input.style ?? "high-energy";
 
-GOAL: maximum retention and views. The narration doubles as on-screen captions, so it must work muted AND spoken.
+  return `You are the Viral Director for short-form vertical reels. You write the NARRATION SCRIPT, the IMAGE STORYBOARD, and KINETIC HOOK POPUPS for a ${input.durationSeconds}-second vertical reel for the brand "${input.brandName}".
+
+STYLE: ${style.toUpperCase()} (High-impact pacing, scroll-stopping visual retention).
+GOAL: Maximum viewer retention. The narration doubles as on-screen captions, so it must work muted AND spoken.
 
 ${INDIA_CONTEXT}
 
@@ -58,19 +72,20 @@ HOOK (first line): pick exactly ONE formula from this library and apply it:
 ${HOOK_LIBRARY.map((h, i) => `${i + 1}. ${h}`).join("\n")}
 
 STRUCTURE (in order):
-1. Hook line — pattern-interrupt in the first sentence
+1. Hook line — pattern-interrupt in the first sentence (first 3 seconds)
 2. 2–4 story/tension lines — one idea per line, short punchy sentences (max ~8 words each)
 3. Payoff — deliver the promise
 ${input.postCta ? `4. Optional soft CTA feel in the last line (the CTA card says "${input.postCta}")` : "4. Land on an emotional final line"}
 
 RULES:
-- Narration: ${words} words total. Emotional over informational (aspiration, surprise, relatability).
-- Sentences ARE the captions: spoken text, verbatim, no emojis, no stage directions.
+- Narration: EXACTLY ${words} words total. This timing is CRITICAL for the voice synthesizer.
+- Sentences ARE the captions: spoken text, verbatim, no emojis, no hashtags.
 - Self-score your hook 1–10 on "would a stranger stop scrolling?" Be honest.
-- imageBriefs: a JSON array of exactly ${input.imageCount} NON-EMPTY strings (never "", never null) — one visual brief per time slice, following the narration beats (hook visual → story → payoff). Each brief: subject, setting, light, mood, vertical composition — under 40 words. Photographic, consistent style across briefs.
+- imageBriefs: JSON array of exactly ${input.imageCount} NON-EMPTY strings — one visual brief per time slice. Each brief: subject, setting, light, mood, vertical composition — under 40 words. Photographic, consistent style.
+- kineticPopups: JSON array of 1–3 punchy uppercase keyword cards for the hook (e.g. [{"text": "STOP SCROLLING", "startTime": 0.2, "duration": 1.5}]).
 - musicMood: 2–5 words describing the background music vibe.
 - cta: max 3 words or omit it.
-- No placeholders, no numbering, no markdown — plain prose only.`;
+- Plain JSON prose only.`;
 }
 
 function clampText(text: string, max: number): string {
@@ -91,12 +106,18 @@ function assemble(input: PlanReelInput, creative: Creative): ReelSpec {
   while (briefs.length < input.imageCount) {
     briefs.push(`vertical cinematic still, story scene ${briefs.length + 1}, consistent lighting and mood`);
   }
+
+  const narration = stripHashtags(stripEmoji(creative.narration));
+  const kineticPopups = repairKineticPopups(creative.kineticPopups, narration, input.durationSeconds);
+
   return reelSpecSchema.parse({
     version: 1,
     durationSeconds: input.durationSeconds,
+    style: input.style ?? "high-energy",
     imageCount: input.imageCount,
-    narration: stripHashtags(stripEmoji(creative.narration)),
+    narration,
     imageBriefs: briefs,
+    kineticPopups,
     ...(creative.cta?.trim() ? { cta: stripEmoji(creative.cta).slice(0, 40) } : {}),
     ...(creative.musicMood?.trim() ? { musicMood: clampText(creative.musicMood, 80) } : {}),
   });
