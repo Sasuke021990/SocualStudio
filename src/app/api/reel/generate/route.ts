@@ -28,9 +28,9 @@ const generateRequestSchema = z.object({
   itemId: z.string().min(1),
   connectionId: z.string().optional(),
   /** Client-side media — sent so unsaved assets still work. */
-  voiceUrl: z.string().optional(),
-  sfxUrl: z.string().optional(),
-  imageUrl: z.string().optional(),
+  voiceUrl: z.string().nullish(),
+  sfxUrl: z.string().nullish(),
+  imageUrl: z.string().nullish(),
 });
 
 function audioFileName(url: string | null | undefined): string | null {
