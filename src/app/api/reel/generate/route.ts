@@ -11,7 +11,7 @@ import { getProviderConfig } from "@/features/ai-provider/store";
 import { getMcpConfig } from "@/features/mcp-client/store";
 import { composeReelPlan } from "@/features/reel/composer";
 import { executeReelPlan, ReelStepError } from "@/features/reel/executor";
-import { voiceFitCheck, type ReelAssets, type ReelSpec } from "@/features/reel/schemas";
+import { voiceSpeedFor, type ReelAssets, type ReelSpec } from "@/features/reel/schemas";
 import { createReelJob, finishReelJob, type ReelJob } from "@/features/reel/jobs";
 import {
   copyIntoReelDir,
@@ -148,17 +148,34 @@ async function runReelJob(job: ReelJob, deps: RunDeps): Promise<void> {
     await freeComfyUIModels();
 
     // ── 2. Audio: narration voice from the reel script + music bed ──
+    // Voice auto-fit: synthesize up to 3 attempts and pick the length closest
+    // to the target; only unusable lengths (outside 0.6–1.5x) fail.
     job.phase = "Generating reel voice…";
     const voice = (await getVoiceById(voiceId ?? "")) ?? VOICE_PRESETS[0];
     const voicePath = join(await ensureReelDir(itemId), "reel-voice.wav");
-    await generateSpeech({ text: spec.narration, voice, outPath: voicePath });
+    let best: { path: string; seconds: number } | null = null;
+    let lastFitError: string | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await generateSpeech({ text: spec.narration, voice, outPath: voicePath });
+      const seconds = await wavDurationSec(voicePath);
+      const fit = voiceSpeedFor(seconds, spec.durationSeconds);
+      if (fit.quality === "unusable") {
+        lastFitError =
+          `Voice is ${seconds.toFixed(1)}s — narration should be about ${spec.durationSeconds}s. Adjust the script and regenerate the plan.`;
+        continue;
+      }
+      const distance = Math.abs(seconds - spec.durationSeconds);
+      if (!best || distance < Math.abs(best.seconds - spec.durationSeconds)) {
+        best = { path: voicePath, seconds };
+      }
+      if (fit.quality === "good") break;
+    }
+    if (!best) throw new Error(lastFitError ?? "Voice generation failed");
+
     job.phase = "Staging music…";
     const musicPath = await copyIntoReelDir(itemId, join(SFX_OUTPUT_DIR, musicFile), "music.wav");
-    const voiceSeconds = await wavDurationSec(voicePath);
+    const voiceSeconds = best.seconds;
     const musicSeconds = await wavDurationSec(musicPath);
-
-    const fit = voiceFitCheck(voiceSeconds, spec.durationSeconds);
-    if (!fit.ok) throw new Error(fit.message);
 
     // ── 3. Compose + execute ──
     job.phase = "Building timeline…";

@@ -76,12 +76,29 @@ export interface ReelAssets {
 }
 
 /** Validation gate for voice length vs target duration (speed-fit tolerance). */
-export const VOICE_SPEED_MIN = 0.85;
-export const VOICE_SPEED_MAX = 1.18;
+export const VOICE_SPEED_MIN = 0.6;
+export const VOICE_SPEED_MAX = 1.5;
+const VOICE_GOOD_MIN = 0.85;
+const VOICE_GOOD_MAX = 1.18;
+
+export function voiceSpeedFor(
+  voiceSeconds: number,
+  durationSeconds: number,
+): { speed: number; quality: "good" | "acceptable" | "unusable" } {
+  const ratio = voiceSeconds / durationSeconds;
+  const speed = Math.min(VOICE_SPEED_MAX, Math.max(VOICE_SPEED_MIN, ratio));
+  const quality =
+    ratio >= VOICE_GOOD_MIN && ratio <= VOICE_GOOD_MAX
+      ? "good"
+      : ratio >= VOICE_SPEED_MIN && ratio <= VOICE_SPEED_MAX
+        ? "acceptable"
+        : "unusable";
+  return { speed: +speed.toFixed(3), quality };
+}
 
 export function voiceFitCheck(voiceSeconds: number, durationSeconds: number): { ok: boolean; message?: string } {
-  const ratio = voiceSeconds / durationSeconds;
-  if (ratio < VOICE_SPEED_MIN || ratio > VOICE_SPEED_MAX) {
+  const fit = voiceSpeedFor(voiceSeconds, durationSeconds);
+  if (fit.quality === "unusable") {
     return {
       ok: false,
       message: `Voice is ${voiceSeconds.toFixed(1)}s — narration should be about ${durationSeconds}s (±15%). Adjust the script and regenerate the plan.`,
