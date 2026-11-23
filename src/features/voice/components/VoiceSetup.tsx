@@ -8,7 +8,9 @@ interface VoiceProfile {
   id: string;
   name: string;
   kind: "preset" | "cloned";
+  description?: string;
   instruct?: string;
+  pitchShift?: number;
   referenceName?: string;
   createdAt: string;
 }
@@ -231,7 +233,7 @@ export function VoiceSetup() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium text-zinc-900 dark:text-zinc-50">{v.name}</div>
-                <div className="truncate text-xs text-zinc-500">{v.instruct}</div>
+                <div className="truncate text-xs text-zinc-500">{v.description || v.instruct}</div>
               </div>
               <button
                 type="button"

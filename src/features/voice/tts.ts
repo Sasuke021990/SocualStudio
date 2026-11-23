@@ -36,6 +36,10 @@ export async function generateSpeech(params: {
     args.push("--task", "tts");
   }
 
+  if (typeof voice.pitchShift === "number" && voice.pitchShift !== 0) {
+    args.push("--pitch-shift", String(voice.pitchShift));
+  }
+
   try {
     await execFileAsync(CLI_PATH, args, {
       timeout: 300_000,
