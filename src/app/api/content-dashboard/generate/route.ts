@@ -8,6 +8,7 @@ import { freeComfyUIModels } from "@/features/comfyui/free";
 import { imageConceptSchema } from "@/features/content-dashboard/variations";
 import type { ProviderConfig } from "@/features/ai-provider/types";
 import { INDIA_CONTEXT, INDIA_IMAGE_CONTEXT } from "@/features/prompts/india";
+import { cleanCaption, hasEmoji, hasHashtag } from "@/features/prompts/clean";
 
 const requestSchema = z.object({
   brandName: z.string().min(1),
@@ -22,9 +23,12 @@ const requestSchema = z.object({
 });
 
 const captionSchema = z.object({
-  caption: z.string(),
+  caption: z
+    .string()
+    .refine((s) => !hasEmoji(s), { message: "caption must not contain emojis" })
+    .refine((s) => !hasHashtag(s), { message: "caption must not contain hashtags — they belong in the hashtags field" }),
   hashtags: z.array(z.string()),
-  cta: z.string(),
+  cta: z.string().refine((s) => !hasEmoji(s), { message: "cta must not contain emojis" }),
 });
 
 const captionWrapSchema = z.object({
@@ -142,7 +146,15 @@ Return ONLY valid JSON — no markdown fences, no prose.`;
               maxRetries: 3,
             });
 
-            const cap = captionResult.variation;
+            const rawCap = captionResult.variation;
+            // Belt & braces: tags live only in hashtags[], text stays emoji-free.
+            const cleaned = cleanCaption(rawCap.caption);
+            const cap = {
+              ...rawCap,
+              caption: cleaned.caption,
+              hashtags: [...new Set([...rawCap.hashtags.map((h) => h.replace(/^#/, "")), ...cleaned.tags])],
+              cta: cleanCaption(rawCap.cta).caption,
+            };
 
             // PHASE 2: image concept FROM the caption
             send({ phase: `Variation ${i + 1}/${count} — designing image to match caption...` });

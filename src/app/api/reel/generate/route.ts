@@ -124,11 +124,9 @@ interface RunDeps {
 
 async function runReelJob(job: ReelJob, deps: RunDeps): Promise<void> {
   const { itemId, itemTitle, variation, spec, musicFile, voiceId, existingImageUrl, connection, openreel } = deps;
-  let unloaded = false;
   try {
     // ── 1. Storyboard images (VRAM: unload LLM first, free Comfy after) ──
     await unloadLocalModel(await getProviderConfig());
-    unloaded = true;
     const imagePaths: string[] = [];
     // The post's generated image becomes storyboard shot 1 — only the missing
     // shots are generated fresh.

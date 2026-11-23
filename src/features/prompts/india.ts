@@ -104,12 +104,9 @@ Preferred visual characteristics:
 Images should feel premium, relatable, energetic and visually memorable.
 
 ## 4. Image Composition & Format
-**Default aspect ratio: Vertical 9:16.**
+**Follow the aspect ratio the pipeline requests for the target platform** — never hardcode a size; composition adapts to whatever frame is provided.
 
 Optimise images for:
-- Instagram Reels.
-- Instagram Stories.
-- YouTube Shorts.
 - Mobile-first social media content.
 
 Composition rules:

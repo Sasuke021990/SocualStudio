@@ -4,6 +4,7 @@ import { OpenAICompatibleProvider } from "@/features/ai-provider";
 import { prepareForLlm } from "@/features/ai-provider/gpu";
 import { reelSpecSchema, type ReelSpec } from "./schemas";
 import { INDIA_CONTEXT, INDIA_IMAGE_CONTEXT } from "@/features/prompts/india";
+import { stripEmoji, stripHashtags } from "@/features/prompts/clean";
 
 const creativeSchema = z.object({
   hookScore: z.number().min(1).max(10),
@@ -45,7 +46,7 @@ export interface PlanReelInput {
 
 function buildSystem(input: PlanReelInput): string {
   const words = input.durationSeconds === 15 ? "25–70" : "50–140";
-  return `You are the Viral Director for short-form vertical reels. You write the NARRATION SCRIPT and the IMAGE STORYBOARD for a ${input.durationSeconds}-second 9:16 reel for the brand "${input.brandName}".
+  return `You are the Viral Director for short-form vertical reels. You write the NARRATION SCRIPT and the IMAGE STORYBOARD for a ${input.durationSeconds}-second vertical reel for the brand "${input.brandName}".
 
 GOAL: maximum retention and views. The narration doubles as on-screen captions, so it must work muted AND spoken.
 
@@ -88,15 +89,15 @@ function assemble(input: PlanReelInput, creative: Creative): ReelSpec {
     .filter((b) => b.length >= 5);
   const briefs = cleaned.slice(0, input.imageCount);
   while (briefs.length < input.imageCount) {
-    briefs.push(`vertical cinematic 9:16 still, story scene ${briefs.length + 1}, consistent lighting and mood`);
+    briefs.push(`vertical cinematic still, story scene ${briefs.length + 1}, consistent lighting and mood`);
   }
   return reelSpecSchema.parse({
     version: 1,
     durationSeconds: input.durationSeconds,
     imageCount: input.imageCount,
-    narration: creative.narration.trim(),
+    narration: stripHashtags(stripEmoji(creative.narration)),
     imageBriefs: briefs,
-    ...(creative.cta?.trim() ? { cta: clampText(creative.cta, 40) } : {}),
+    ...(creative.cta?.trim() ? { cta: stripEmoji(creative.cta).slice(0, 40) } : {}),
     ...(creative.musicMood?.trim() ? { musicMood: clampText(creative.musicMood, 80) } : {}),
   });
 }

@@ -420,7 +420,10 @@ export default function WorkspaceClient() {
             </div>
 
             {/* Image / Reel */}
-            <div className="relative flex aspect-square items-center justify-center overflow-hidden" style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}>
+            <div
+              className={`relative flex items-center justify-center overflow-hidden ${cardView === "reel" && reelMeta ? "aspect-[9/16]" : "aspect-square"}`}
+              style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}
+            >
               {reelMeta && (
                 <div className="absolute left-3 top-3 z-20 flex gap-1.5">
                   {(["image", "reel"] as const).map((v) => (
@@ -442,7 +445,7 @@ export default function WorkspaceClient() {
                 <video
                   controls
                   src={`/api/reel/file?item=${id}`}
-                  className="absolute inset-0 h-full w-full object-contain"
+                  className="absolute inset-0 h-full w-full object-cover"
                   style={{ background: "#000" }}
                 />
               ) : image ? (

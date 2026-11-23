@@ -9,7 +9,16 @@ export const reelSpecSchema = z
     /** How many storyboard images to generate and use (1–3). */
     imageCount: z.union([z.literal(1), z.literal(2), z.literal(3)]),
     /** Spoken narration — also the on-screen captions. */
-    narration: z.string().min(30).max(600),
+    narration: z
+      .string()
+      .min(30)
+      .max(600)
+      .refine((s) => !/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}]/u.test(s), {
+        message: "narration must not contain emojis",
+      })
+      .refine((s) => !/#[\p{L}\p{N}_]/u.test(s), {
+        message: "narration must not contain hashtags",
+      }),
     /** One visual brief per image, following the narration beats. */
     imageBriefs: z.array(z.string().min(5).max(500)).min(1).max(3),
     /** Optional end-card text (shown in the last 20% of the reel). */
