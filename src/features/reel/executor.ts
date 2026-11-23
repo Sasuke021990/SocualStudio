@@ -49,6 +49,7 @@ function substitute(value: unknown, map: Map<string, string>): unknown {
 export async function executeReelPlan(server: McpServerConfig, steps: ReelToolStep[]): Promise<string> {
   return withMcpConnection(server, async (conn) => {
     const map = new Map<string, string>();
+    const dims = new Map<string, { w: number; h: number }>();
     let exportText = "";
 
     for (const step of steps) {
@@ -61,12 +62,14 @@ export async function executeReelPlan(server: McpServerConfig, steps: ReelToolSt
         throw new ReelStepError(step.label, text.slice(0, 400));
       }
 
-      const imported = (jsonOf(text) as { imported?: Array<{ mediaId: string }> } | null)?.imported;
-      if (step.resolve?.includes("media") && imported && step.mediaNames) {
+      const parsed = jsonOf(text) as { imported?: Array<{ mediaId: string; width?: number; height?: number }> } | null;
+      if (step.resolve?.includes("media") && parsed?.imported && step.mediaNames) {
         // Order matches the import `paths`
-        imported.forEach((m, i) => {
+        parsed.imported.forEach((m, i) => {
           const name = step.mediaNames![i];
-          if (name) map.set(`__media:${name}__`, m.mediaId);
+          if (!name) return;
+          map.set(`__media:${name}__`, m.mediaId);
+          if (m.width && m.height) dims.set(name, { w: m.width, h: m.height });
         });
       }
 
@@ -78,7 +81,20 @@ export async function executeReelPlan(server: McpServerConfig, steps: ReelToolSt
           else map.set("__audioTrack2__", `track-${id}-0`);
         }
         if (step.tool === "add_clip" && step.clipName) {
-          map.set(`__clip:${step.clipName}__`, `${id}-0`);
+          const clipId = `${id}-0`;
+          map.set(`__clip:${step.clipName}__`, clipId);
+          // Cover-scale off-aspect media (e.g. a reused 1:1 image) so it fills
+          // the 9:16 frame instead of floating in black bars.
+          const d = dims.get(step.clipName);
+          if (step.clipName.startsWith("img") && d) {
+            const mediaAspect = d.w / d.h;
+            const frameAspect = 9 / 16;
+            const ratio = Math.max(mediaAspect, frameAspect) / Math.min(mediaAspect, frameAspect);
+            if (ratio > 1.02) {
+              const cover = +ratio.toFixed(3);
+              await conn.callTool("set_clip_transform", { clipId, scale: { x: cover, y: cover } });
+            }
+          }
         }
       }
 
