@@ -81,7 +81,7 @@ export function VoiceSetup() {
       const res = await fetch("/api/voice/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: `Hello! This is ${name}, your voice for social media content.`, voiceId }),
+        body: JSON.stringify({ text: `Namaste! This is ${name}, ready for your social media content.`, voiceId }),
       });
       const data = await res.json() as { audio?: { url: string }; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Generation failed");
@@ -156,7 +156,7 @@ export function VoiceSetup() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".wav,.mp3,.flac,.ogg"
+            accept=".wav,.mp3,.flac,.ogg,.m4a,.mp4,.aac"
             onChange={handleUpload}
             className="hidden"
           />
