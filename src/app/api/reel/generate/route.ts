@@ -18,10 +18,13 @@ import {
   copyIntoReelDir,
   copyReelToExport,
   downloadIntoReelDir,
+  ensureReelDir,
   reelWorkDir,
   wavDurationSec,
 } from "@/features/reel/assets";
-import { TTS_OUTPUT_DIR } from "@/features/voice/tts";
+import { generateSpeech } from "@/features/voice/tts";
+import { getVoiceById } from "@/features/voice/store";
+import { VOICE_PRESETS } from "@/features/voice/types";
 import { SFX_OUTPUT_DIR } from "@/features/voice/sfx";
 
 const generateRequestSchema = z.object({
@@ -31,6 +34,8 @@ const generateRequestSchema = z.object({
   voiceUrl: z.string().nullish(),
   sfxUrl: z.string().nullish(),
   imageUrl: z.string().nullish(),
+  /** Voice for the reel narration (the post voice-over reads the full caption). */
+  voiceId: z.string().nullish(),
 });
 
 function audioFileName(url: string | null | undefined): string | null {
@@ -69,11 +74,10 @@ export async function POST(request: Request) {
   const spec = variation?.reelSpec as ReelSpec | undefined;
   if (!spec) return NextResponse.json({ error: "No reel plan — generate a plan first" }, { status: 400 });
 
-  const voiceFile = audioFileName(parsed.data.voiceUrl ?? variation?.voiceAudio);
   const musicFile = audioFileName(parsed.data.sfxUrl ?? variation?.sfxAudio);
-  if (!voiceFile || !musicFile) {
+  if (!musicFile) {
     return NextResponse.json(
-      { error: "Generate voice-over and sound first — the reel needs both." },
+      { error: "Generate sound first — the reel needs a music bed. Voice is created from the reel script." },
       { status: 400 },
     );
   }
@@ -97,8 +101,8 @@ export async function POST(request: Request) {
     itemTitle: item.title,
     variation: variation!,
     spec,
-    voiceFile,
     musicFile,
+    voiceId: parsed.data.voiceId ?? undefined,
     existingImageUrl: parsed.data.imageUrl ?? variation?.generatedImage ?? undefined,
     connection,
     openreel,
@@ -112,15 +116,15 @@ interface RunDeps {
   itemTitle: string;
   variation: NonNullable<ContentItem["variation"]>;
   spec: ReelSpec;
-  voiceFile: string;
   musicFile: string;
+  voiceId?: string;
   existingImageUrl?: string;
   connection: NonNullable<Awaited<ReturnType<typeof getActiveConnection>>>;
   openreel: NonNullable<Awaited<ReturnType<typeof getMcpConfig>>["servers"][number]>;
 }
 
 async function runReelJob(job: ReelJob, deps: RunDeps): Promise<void> {
-  const { itemId, itemTitle, variation, spec, voiceFile, musicFile, existingImageUrl, connection, openreel } = deps;
+  const { itemId, itemTitle, variation, spec, musicFile, voiceId, existingImageUrl, connection, openreel } = deps;
   let unloaded = false;
   try {
     // ── 1. Storyboard images (VRAM: unload LLM first, free Comfy after) ──
@@ -144,9 +148,12 @@ async function runReelJob(job: ReelJob, deps: RunDeps): Promise<void> {
     }
     await freeComfyUIModels();
 
-    // ── 2. Stage audio ──
-    job.phase = "Staging voice and sound…";
-    const voicePath = await copyIntoReelDir(itemId, join(TTS_OUTPUT_DIR, voiceFile), "voice.wav");
+    // ── 2. Audio: narration voice from the reel script + music bed ──
+    job.phase = "Generating reel voice…";
+    const voice = (await getVoiceById(voiceId ?? "")) ?? VOICE_PRESETS[0];
+    const voicePath = join(await ensureReelDir(itemId), "reel-voice.wav");
+    await generateSpeech({ text: spec.narration, voice, outPath: voicePath });
+    job.phase = "Staging music…";
     const musicPath = await copyIntoReelDir(itemId, join(SFX_OUTPUT_DIR, musicFile), "music.wav");
     const voiceSeconds = await wavDurationSec(voicePath);
     const musicSeconds = await wavDurationSec(musicPath);

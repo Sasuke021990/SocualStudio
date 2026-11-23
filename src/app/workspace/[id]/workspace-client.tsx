@@ -213,6 +213,7 @@ export default function WorkspaceClient() {
           voiceUrl: audio?.url,
           sfxUrl: sfx?.audio.url,
           imageUrl: image?.url,
+          voiceId: voiceId || voices[0]?.id,
         }),
       });
       const start = (await res.json()) as { job?: string; error?: string };
@@ -344,13 +345,11 @@ export default function WorkspaceClient() {
     ? "Approved posts are not editable"
     : !reelSpec || !planAccepted
       ? "Generate and accept a reel plan first"
-      : !audio
-        ? "Generate voice-over first"
-        : !sfx
-          ? "Generate sound first"
-          : anyGenerating
-            ? "Another generation is running"
-            : null;
+      : !sfx
+        ? "Generate sound first — the reel needs a music bed (voice comes from the reel script)"
+        : anyGenerating
+          ? "Another generation is running"
+          : null;
 
   if (loading) {
     return (
