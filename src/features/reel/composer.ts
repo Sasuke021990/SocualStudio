@@ -329,6 +329,28 @@ export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { proj
     },
   });
 
+  // Pacing cleanup: tighten up filler words and dead air before export.
+  steps.push({ label: "Remove filler words", tool: "remove_filler_words", args: {} });
+  steps.push({ label: "Remove long pauses", tool: "remove_pauses", args: { minDuration: 0.4 } });
+  steps.push({ label: "Caption QC", tool: "caption_qc", args: {} });
+
+  // Beat-sync pulse on the hook popup, only when there's both music to sync
+  // to and a popup layer to pulse. Always targets popup index 0 — more
+  // popups pulsing independently is a future enhancement, not this task's
+  // scope (design doc 9c item 7).
+  if (assets.musicSeconds > 1 && spec.kineticPopups.length > 0) {
+    steps.push({
+      label: "Sync motion to music beat",
+      tool: "sync_motion_to_audio",
+      args: { compositionId: "__composition:popup0__", mediaId: mediaToken("music") },
+    });
+    steps.push({
+      label: "Pulse hook text on beat",
+      tool: "apply_motion_preset_to_beats",
+      args: { compositionId: "__composition:popup0__", layerId: "__layer:popup0__", presetId: "pulse" },
+    });
+  }
+
   steps.push({
     label: `Export ${D}s reel`,
     tool: "export_video",

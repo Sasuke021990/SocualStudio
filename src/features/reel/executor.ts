@@ -23,6 +23,11 @@ const NON_FATAL_TOOLS = new Set<string>([
   "insert_motion_into_editor",
   "insert_graphic_template",
   "import_captions",
+  "remove_filler_words",
+  "remove_pauses",
+  "caption_qc",
+  "sync_motion_to_audio",
+  "apply_motion_preset_to_beats",
 ]);
 
 export class ReelStepError extends Error {

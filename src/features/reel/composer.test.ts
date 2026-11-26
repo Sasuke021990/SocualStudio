@@ -167,3 +167,30 @@ test("caption style includes a highlightColor for the word-by-word pop", () => {
   const styleStep = steps.find((s) => s.tool === "set_caption_style")!;
   assert.ok((styleStep.args as { style: { highlightColor?: string } }).style.highlightColor);
 });
+
+test("pacing cleanup steps run, and beat-sync is skipped when there's no music", () => {
+  const steps = composeReelPlan(specWith(), assetsWith({ musicSeconds: 0 }), { projectName: "t" });
+  assert.ok(steps.some((s) => s.tool === "remove_filler_words"));
+  assert.ok(steps.some((s) => s.tool === "remove_pauses"));
+  assert.ok(steps.some((s) => s.tool === "caption_qc"));
+  assert.ok(!steps.some((s) => s.tool === "sync_motion_to_audio"));
+});
+
+test("beat-sync is skipped when there's music but no kinetic popup to pulse", () => {
+  const steps = composeReelPlan(specWith({ kineticPopups: [] }), assetsWith({ musicSeconds: 15 }), { projectName: "t" });
+  assert.ok(!steps.some((s) => s.tool === "sync_motion_to_audio"));
+});
+
+test("beat-sync pulses the first kinetic popup's layer when both music and a popup exist", () => {
+  const steps = composeReelPlan(
+    specWith({ kineticPopups: [{ text: "GO", startTime: 1, duration: 1, position: "center", color: "#FFE600", strokeColor: "#000000", fontSize: 76 }] }),
+    assetsWith({ musicSeconds: 15 }),
+    { projectName: "t" },
+  );
+  const syncStep = steps.find((s) => s.tool === "sync_motion_to_audio");
+  assert.ok(syncStep);
+  const beatStep = steps.find((s) => s.tool === "apply_motion_preset_to_beats");
+  assert.ok(beatStep);
+  assert.equal((beatStep!.args as { compositionId: string }).compositionId, "__composition:popup0__");
+  assert.equal((beatStep!.args as { layerId: string }).layerId, "__layer:popup0__");
+});
