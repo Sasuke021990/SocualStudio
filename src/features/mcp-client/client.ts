@@ -8,7 +8,7 @@ const TOOL_TIMEOUT_MS = 600_000;
 const CONNECT_TIMEOUT_MS = 15_000;
 
 export interface McpConnection {
-  listTools(): Promise<Array<{ name: string; description: string }>>;
+  listTools(): Promise<Array<{ name: string; description: string; inputSchema?: unknown }>>;
   callTool(name: string, args: unknown): Promise<string>;
   close(): Promise<void>;
 }
@@ -53,6 +53,7 @@ export async function connect(server: McpServerConfig): Promise<McpConnection> {
       return (res.tools ?? []).map((t) => ({
         name: t.name,
         description: t.description ?? "",
+        inputSchema: t.inputSchema,
       }));
     },
     async callTool(name, args) {

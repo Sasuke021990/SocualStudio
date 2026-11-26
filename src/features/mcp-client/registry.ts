@@ -32,6 +32,18 @@ function truncate(text: string): string {
 }
 
 /**
+ * A tool's real inputSchema, or an empty object schema when the server
+ * didn't provide one. Previously this was hardcoded to the empty schema
+ * for every tool, discarding whatever the server actually sent.
+ */
+export function toolParameters(inputSchema: unknown): Record<string, unknown> {
+  if (inputSchema && typeof inputSchema === "object") {
+    return inputSchema as Record<string, unknown>;
+  }
+  return { type: "object", properties: {} };
+}
+
+/**
  * Collect OpenAI-format tool schemas from all enabled servers allowed for
  * `stage`. Pass `{ ignoreStage: true }` to force acquisition regardless of the
  * global stage switch (per-run override). Returns null when nothing is
@@ -60,7 +72,7 @@ export async function acquireToolset(
           function: {
             name,
             description: `[${server.name}] ${tool.description}`.trim(),
-            parameters: { type: "object", properties: {} },
+            parameters: toolParameters(tool.inputSchema),
           },
         });
       }
