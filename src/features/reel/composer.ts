@@ -35,7 +35,8 @@ const mediaToken = (mediaName: string) => `__media:${mediaName}__`;
 
 interface StyleDirectives {
   transitions: Array<{ type: string; duration: number }>;
-  effects: Array<{ clipIndex: number; type: string; params: Record<string, unknown> }>;
+  /** Round-robin pool: every image clip gets effects[i % effects.length] (empty = no VFX for this style). */
+  effects: Array<{ type: string; params: Record<string, unknown> }>;
 }
 
 function directivesForStyle(style: ReelStyle, slice: number): StyleDirectives {
@@ -49,8 +50,8 @@ function directivesForStyle(style: ReelStyle, slice: number): StyleDirectives {
           { type: "zoom", duration: transDuration },
         ],
         effects: [
-          { clipIndex: 0, type: "vignette", params: {} },
-          { clipIndex: 1, type: "glow", params: {} },
+          { type: "vignette", params: {} },
+          { type: "glow", params: {} },
         ],
       };
     case "tech-explainer":
@@ -60,7 +61,7 @@ function directivesForStyle(style: ReelStyle, slice: number): StyleDirectives {
           { type: "radialWipe", duration: transDuration },
         ],
         effects: [
-          { clipIndex: 0, type: "halftone", params: {} },
+          { type: "halftone", params: {} },
         ],
       };
     case "minimalist":
@@ -79,8 +80,8 @@ function directivesForStyle(style: ReelStyle, slice: number): StyleDirectives {
           { type: "glitch", duration: Math.min(transDuration, 0.35) },
         ],
         effects: [
-          { clipIndex: 0, type: "vhs-glitch", params: { scanlines: 20, rgbSplit: 35, jitter: 15 } },
-          { clipIndex: 1, type: "chromatic-aberration", params: {} },
+          { type: "vhs-glitch", params: { scanlines: 20, rgbSplit: 35, jitter: 15 } },
+          { type: "chromatic-aberration", params: {} },
         ],
       };
   }
@@ -172,14 +173,16 @@ export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { proj
     });
   }
 
-  // Visual Effects (VFX MCP Tools)
-  for (const ef of styleDirectives.effects) {
-    if (ef.clipIndex < N) {
+  // Visual Effects (VFX MCP Tools): every image gets one, cycling through the
+  // style's effect pool so a 3rd/4th image isn't left with no VFX at all.
+  if (styleDirectives.effects.length > 0) {
+    for (let i = 0; i < N; i++) {
+      const ef = styleDirectives.effects[i % styleDirectives.effects.length];
       steps.push({
-        label: `VFX ${ef.type} on Image ${ef.clipIndex + 1}`,
+        label: `VFX ${ef.type} on Image ${i + 1}`,
         tool: "add_video_effect",
         args: {
-          clipId: clipToken(`img${ef.clipIndex}`),
+          clipId: clipToken(`img${i}`),
           effectType: ef.type,
           params: ef.params,
         },
