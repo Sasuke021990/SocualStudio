@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PageChrome } from "@/components/nav";
-import { IconFile, IconGlobe, IconPaperclip, IconPencil } from "@/components/icons";
+import { IconFile, IconGlobe, IconPaperclip, IconPencil, IconX } from "@/components/icons";
 import type { BrandBrain2Profile } from "@/features/brand-brain/types";
 
 type SourceType = "url" | "text" | "file";
@@ -465,11 +465,11 @@ export default function CreateBrandPage() {
                     value={brand.recommendedVoiceId}
                     onChange={(e) => setBrand({ ...brand, recommendedVoiceId: e.target.value })}
                   >
-                    <option value="preset-energetic-host">⚡ Kabir - Energetic Host (Upbeat Tech Founder / Viral)</option>
-                    <option value="preset-professional">💼 Pooja - Professional (Articulate Corporate Businesswoman)</option>
-                    <option value="preset-friendly">✨ Rohan - Casual Creator (Relatable Conversational English)</option>
-                    <option value="preset-warm-narrator">🌸 Aditi - Warm Narrator (Calm, Trustworthy Indian Woman)</option>
-                    <option value="preset-storyteller">🎙️ Vikram - Storyteller (Deep, Expressive & Dramatic)</option>
+                    <option value="preset-energetic-host">Kabir - Energetic Host (Upbeat Tech Founder / Viral)</option>
+                    <option value="preset-professional">Pooja - Professional (Articulate Corporate Businesswoman)</option>
+                    <option value="preset-friendly">Rohan - Casual Creator (Relatable Conversational English)</option>
+                    <option value="preset-warm-narrator">Aditi - Warm Narrator (Calm, Trustworthy Indian Woman)</option>
+                    <option value="preset-storyteller">Vikram - Storyteller (Deep, Expressive & Dramatic)</option>
                   </select>
                 </label>
                 <label className="field-label">
@@ -665,7 +665,7 @@ function ArrayField({
               onClick={() => onChange(items.filter((_, j) => j !== i))}
               aria-label={`Remove ${item}`}
             >
-              ✕
+              <IconX size={12} aria-hidden />
             </button>
           </span>
         ))}
