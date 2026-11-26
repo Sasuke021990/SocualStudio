@@ -34,8 +34,10 @@ const NON_FATAL_TOOLS = new Set<string>([
 // (Final review #1) rather than added here — see composer.ts.
 
 export class ReelStepError extends Error {
-  constructor(readonly stepLabel: string, message: string) {
+  readonly stepLabel: string;
+  constructor(stepLabel: string, message: string) {
     super(`${stepLabel}: ${message}`);
+    this.stepLabel = stepLabel;
     this.name = "ReelStepError";
   }
 }
