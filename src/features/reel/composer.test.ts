@@ -83,3 +83,19 @@ test("set_clip_keyframes targets the matching image clip's token", () => {
   assert.equal((kf[0].args as { clipId: string }).clipId, "__clip:img0__");
   assert.equal((kf[1].args as { clipId: string }).clipId, "__clip:img1__");
 });
+
+test("every image clip gets a set_color_grading step matching its style's grade", () => {
+  const steps = composeReelPlan(specWith({ style: "cinematic", imageCount: 2 }), assetsWith(), { projectName: "t" });
+  const grades = steps.filter((s) => s.tool === "set_color_grading");
+  assert.equal(grades.length, 2);
+  assert.ok((grades[0].args as { colorGrading: object }).colorGrading);
+  assert.equal((grades[0].args as { clipId: string }).clipId, "__clip:img0__");
+});
+
+test("different styles get different color grades", () => {
+  const cinematic = directivesForStyle("cinematic", 5).colorGrade;
+  const highEnergy = directivesForStyle("high-energy", 5).colorGrade;
+  const minimalist = directivesForStyle("minimalist", 5).colorGrade;
+  assert.notDeepEqual(cinematic, highEnergy);
+  assert.notDeepEqual(cinematic, minimalist);
+});

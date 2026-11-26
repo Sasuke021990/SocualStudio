@@ -15,6 +15,7 @@ const NON_FATAL_TOOLS = new Set<string>([
   "add_video_effect",
   "set_clip_transform",
   "set_clip_keyframes",
+  "set_color_grading",
 ]);
 
 export class ReelStepError extends Error {

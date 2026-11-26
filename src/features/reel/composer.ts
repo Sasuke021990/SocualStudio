@@ -37,6 +37,8 @@ interface StyleDirectives {
   transitions: Array<{ type: string; duration: number }>;
   /** Round-robin pool: every image clip gets effects[i % effects.length] (empty = no VFX for this style). */
   effects: Array<{ type: string; params: Record<string, unknown> }>;
+  /** One consistent set_color_grading payload applied to every image clip. */
+  colorGrade: Record<string, unknown>;
 }
 
 export function directivesForStyle(style: ReelStyle, slice: number): StyleDirectives {
@@ -54,6 +56,7 @@ export function directivesForStyle(style: ReelStyle, slice: number): StyleDirect
           { type: "vignette", params: {} },
           { type: "glow", params: {} },
         ],
+        colorGrade: { temp: -8, tint: 2, hsl: { saturation: -5 }, wheels: { shadows: { lift: -0.04 } } },
       };
     case "tech-explainer":
       return {
@@ -65,6 +68,7 @@ export function directivesForStyle(style: ReelStyle, slice: number): StyleDirect
         effects: [
           { type: "halftone", params: {} },
         ],
+        colorGrade: { temp: -4, tint: 0, hsl: { saturation: -10 } },
       };
     case "minimalist":
       return {
@@ -73,6 +77,7 @@ export function directivesForStyle(style: ReelStyle, slice: number): StyleDirect
           { type: "crossfade", duration: transDuration },
         ],
         effects: [],
+        colorGrade: { temp: 0, tint: 0, hsl: { saturation: -2 } },
       };
     case "high-energy":
     default:
@@ -86,6 +91,7 @@ export function directivesForStyle(style: ReelStyle, slice: number): StyleDirect
           { type: "vhs-glitch", params: { scanlines: 20, rgbSplit: 35, jitter: 15 } },
           { type: "chromatic-aberration", params: {} },
         ],
+        colorGrade: { temp: 6, tint: -2, hsl: { saturation: 18 } },
       };
   }
 }
@@ -177,6 +183,11 @@ export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { proj
           { time: slice, property: "scale.y", value: scaleEnd },
         ],
       },
+    });
+    steps.push({
+      label: `Color grade image ${i + 1}/${N}`,
+      tool: "set_color_grading",
+      args: { clipId: clipToken(`img${i}`), colorGrading: styleDirectives.colorGrade },
     });
   }
 
