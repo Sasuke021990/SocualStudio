@@ -64,3 +64,22 @@ test("transitions in the plan cycle through the pool via index modulo", () => {
   const types = steps.filter((s) => s.tool === "add_transition").map((s) => s.args.transitionType);
   assert.deepEqual(types, [pool[0].type, pool[1].type]);
 });
+
+test("every image clip gets a set_clip_keyframes step animating scale over its full slice duration", () => {
+  const steps = composeReelPlan(specWith({ imageCount: 2, durationSeconds: 30 }), assetsWith(), { projectName: "t" });
+  const kf = steps.filter((s) => s.tool === "set_clip_keyframes");
+  assert.equal(kf.length, 2);
+  const firstKeyframes = (kf[0].args as { keyframes: Array<{ time: number; property: string; value: number }> }).keyframes;
+  const scaleXStart = firstKeyframes.find((k) => k.property === "scale.x" && k.time === 0);
+  const scaleXEnd = firstKeyframes.find((k) => k.property === "scale.x" && k.time === 15);
+  assert.ok(scaleXStart, "expected a scale.x keyframe at time 0");
+  assert.ok(scaleXEnd, "expected a scale.x keyframe at time=slice (15)");
+  assert.notEqual(scaleXStart!.value, scaleXEnd!.value);
+});
+
+test("set_clip_keyframes targets the matching image clip's token", () => {
+  const steps = composeReelPlan(specWith({ imageCount: 2, durationSeconds: 30 }), assetsWith(), { projectName: "t" });
+  const kf = steps.filter((s) => s.tool === "set_clip_keyframes");
+  assert.equal((kf[0].args as { clipId: string }).clipId, "__clip:img0__");
+  assert.equal((kf[1].args as { clipId: string }).clipId, "__clip:img1__");
+});

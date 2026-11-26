@@ -159,6 +159,25 @@ export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { proj
       tool: "set_clip_transform",
       args: { clipId: clipToken(`img${i}`), transform: { fitMode: "cover" } },
     });
+    // Ken Burns: slow continuous zoom over the clip's full on-screen time.
+    // Alternate in/out by index so a multi-image reel doesn't zoom the same
+    // way on every clip.
+    const zoomIn = i % 2 === 0;
+    const scaleStart = zoomIn ? 1.0 : 1.08;
+    const scaleEnd = zoomIn ? 1.08 : 1.0;
+    steps.push({
+      label: `Ken Burns zoom image ${i + 1}/${N}`,
+      tool: "set_clip_keyframes",
+      args: {
+        clipId: clipToken(`img${i}`),
+        keyframes: [
+          { time: 0, property: "scale.x", value: scaleStart },
+          { time: 0, property: "scale.y", value: scaleStart },
+          { time: slice, property: "scale.x", value: scaleEnd },
+          { time: slice, property: "scale.y", value: scaleEnd },
+        ],
+      },
+    });
   }
 
   // Transitions between adjacent image clips (Creative MCP Tools): cycle
