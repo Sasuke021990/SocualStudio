@@ -13,6 +13,29 @@ export interface McpConnection {
   close(): Promise<void>;
 }
 
+export interface CallToolResultLike {
+  content?: Array<{ type: string; text?: string }>;
+  isError?: boolean;
+}
+
+/**
+ * The MCP SDK surfaces tool-level failures (bad params, a confirmation the
+ * tool is waiting on, an aborted render) as isError:true on an otherwise
+ * normal-looking result, not as a rejected promise. Treating that result as
+ * success text is how a real export failure (export_video returning
+ * isError:true) was silently swallowed — see executor.ts's ERROR_CODES.
+ */
+export function parseCallToolResult(res: CallToolResultLike): string {
+  const content = (res.content ?? []) as Array<{ type: string; text?: string }>;
+  const text = content
+    .map((part) => (part.type === "text" ? (part.text ?? "") : JSON.stringify(part)))
+    .join("\n") || JSON.stringify(res);
+  if (res.isError) {
+    throw new Error(text || "MCP tool call returned isError with no message");
+  }
+  return text;
+}
+
 function createTransport(server: McpServerConfig) {
   if (server.transport === "stdio") {
     return new StdioClientTransport({
@@ -62,11 +85,7 @@ export async function connect(server: McpServerConfig): Promise<McpConnection> {
         undefined,
         { timeout: TOOL_TIMEOUT_MS },
       );
-      const content = (res.content ?? []) as Array<{ type: string; text?: string }>;
-      const text = content
-        .map((part) => (part.type === "text" ? (part.text ?? "") : JSON.stringify(part)))
-        .join("\n");
-      return text || JSON.stringify(res);
+      return parseCallToolResult(res as CallToolResultLike);
     },
     async close() {
       await client.close().catch(() => {});
