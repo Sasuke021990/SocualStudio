@@ -151,3 +151,19 @@ test("when spec.cta is not set, there is no insert_graphic_template step", () =>
   const steps = composeReelPlan(specWith({ cta: undefined }), assetsWith(), { projectName: "t" });
   assert.ok(!steps.some((s) => s.tool === "insert_graphic_template"));
 });
+
+test("captions are added via import_captions with word-level timing instead of per-sentence add_subtitle", () => {
+  const steps = composeReelPlan(specWith({ narration: "Hi there. This works great for testing.", durationSeconds: 30 }), assetsWith(), { projectName: "t" });
+  const importStep = steps.find((s) => s.tool === "import_captions");
+  assert.ok(importStep, "expected an import_captions step");
+  const content = JSON.parse((importStep!.args as { content: string }).content);
+  assert.ok(Array.isArray(content.segments) && content.segments.length >= 1);
+  assert.ok(content.segments[0].words.length > 0);
+  assert.ok(!steps.some((s) => s.tool === "add_subtitle"));
+});
+
+test("caption style includes a highlightColor for the word-by-word pop", () => {
+  const steps = composeReelPlan(specWith(), assetsWith(), { projectName: "t" });
+  const styleStep = steps.find((s) => s.tool === "set_caption_style")!;
+  assert.ok((styleStep.args as { style: { highlightColor?: string } }).style.highlightColor);
+});

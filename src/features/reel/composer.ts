@@ -5,6 +5,7 @@ import {
   type ReelSpec,
   type ReelStyle,
 } from "./schemas";
+import { estimateWordTimings } from "./wordTiming";
 
 /**
  * Deterministic ReelSpec → OpenReel tool-call plan. Zero LLM: every timing
@@ -102,23 +103,9 @@ export function directivesForStyle(style: ReelStyle, slice: number): StyleDirect
   }
 }
 
-/** Split narration into caption sentences (verbatim speech text). */
-export function captionCues(narration: string, durationSeconds: number, hasCta: boolean): Array<{ text: string; startTime: number; endTime: number }> {
-  const sentences = narration
-    .split(/(?<=[.!?])\s+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-  // Speech finishes 0.5s before end of reel for clean audio finish (Solution C)
-  const speechEnd = hasCta ? durationSeconds * 0.8 : durationSeconds - 0.5;
-  const totalChars = sentences.reduce((s, x) => s + x.length, 0) || 1;
-  const cues: Array<{ text: string; startTime: number; endTime: number }> = [];
-  let t = 0;
-  for (const s of sentences) {
-    const end = +(t + (speechEnd * s.length) / totalChars).toFixed(2);
-    cues.push({ text: s.replace(/[.!?]+$/, ""), startTime: +t.toFixed(2), endTime: Math.min(end, +speechEnd.toFixed(2)) });
-    t = end;
-  }
-  return cues;
+/** Speech finishes before end of reel for a clean finish (Solution C): earlier still if a CTA end-card follows. */
+function speechEndFor(durationSeconds: number, hasCta: boolean): number {
+  return hasCta ? durationSeconds * 0.8 : durationSeconds - 0.5;
 }
 
 export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { projectName: string }): ReelToolStep[] {
@@ -296,11 +283,16 @@ export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { proj
     args: { clipId: clipToken("music"), fadeIn: spec.audio.fadeInSec, fadeOut: spec.audio.fadeOutSec },
   });
 
-  // Bottom captions with safeMargin 0.20
-  const cues = captionCues(spec.narration, D, Boolean(spec.cta));
-  for (const cue of cues) {
-    steps.push({ label: `Caption "${cue.text.slice(0, 24)}…"`, tool: "add_subtitle", args: { ...cue } });
-  }
+  // Word-level animated captions: character-weighted estimate (no ASR tool
+  // fits a general "transcribe this TTS audio" need in the OpenReel catalog)
+  // grouped into import_captions's word-timed transcript JSON format.
+  const speechEnd = speechEndFor(D, Boolean(spec.cta));
+  const captionSegments = estimateWordTimings(spec.narration, speechEnd);
+  steps.push({
+    label: "Import word-timed captions",
+    tool: "import_captions",
+    args: { content: JSON.stringify({ segments: captionSegments }) },
+  });
   if (spec.cta) {
     // Real end-card graphic instead of a plain subtitle. templateId is a
     // name, not a hard id (OpenReel resolves it against list_graphic_templates
@@ -327,6 +319,7 @@ export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { proj
         position: spec.captions.position,
         fontSize: spec.captions.fontSize,
         color: "#ffffff",
+        highlightColor: "#FFE600",
         strokeColor: "#000000",
         strokeWidth: spec.captions.stroke,
         shadowColor: "#000000",
