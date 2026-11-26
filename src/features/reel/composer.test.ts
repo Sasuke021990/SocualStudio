@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { composeReelPlan } from "./composer";
+import { composeReelPlan, directivesForStyle } from "./composer";
 import type { ReelSpec, ReelAssets } from "./schemas";
 
 export function specWith(overrides: Partial<ReelSpec> = {}): ReelSpec {
@@ -44,3 +44,23 @@ for (const style of STYLES) {
     });
   }
 }
+
+for (const style of ["cinematic", "tech-explainer", "high-energy"] as const) {
+  test(`${style} has at least 3 transition types in its pool (room to rotate beyond 2)`, () => {
+    const directives = directivesForStyle(style, 5);
+    assert.ok(directives.transitions.length >= 3, `expected >=3, got ${directives.transitions.length}`);
+  });
+}
+
+test("minimalist keeps its 2-entry crossfade pool (no variety wanted there)", () => {
+  const directives = directivesForStyle("minimalist", 5);
+  assert.equal(directives.transitions.length, 2);
+  assert.ok(directives.transitions.every((t) => t.type === "crossfade"));
+});
+
+test("transitions in the plan cycle through the pool via index modulo", () => {
+  const steps = composeReelPlan(specWith({ style: "high-energy", imageCount: 3 }), assetsWith(), { projectName: "t" });
+  const pool = directivesForStyle("high-energy", 5).transitions;
+  const types = steps.filter((s) => s.tool === "add_transition").map((s) => s.args.transitionType);
+  assert.deepEqual(types, [pool[0].type, pool[1].type]);
+});

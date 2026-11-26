@@ -39,7 +39,7 @@ interface StyleDirectives {
   effects: Array<{ type: string; params: Record<string, unknown> }>;
 }
 
-function directivesForStyle(style: ReelStyle, slice: number): StyleDirectives {
+export function directivesForStyle(style: ReelStyle, slice: number): StyleDirectives {
   const transDuration = Math.min(+(slice * 0.2).toFixed(2), 0.45);
 
   switch (style) {
@@ -48,6 +48,7 @@ function directivesForStyle(style: ReelStyle, slice: number): StyleDirectives {
         transitions: [
           { type: "filmBurn", duration: transDuration },
           { type: "zoom", duration: transDuration },
+          { type: "dipToBlack", duration: transDuration },
         ],
         effects: [
           { type: "vignette", params: {} },
@@ -59,6 +60,7 @@ function directivesForStyle(style: ReelStyle, slice: number): StyleDirectives {
         transitions: [
           { type: "push", duration: transDuration },
           { type: "radialWipe", duration: transDuration },
+          { type: "blinds", duration: transDuration },
         ],
         effects: [
           { type: "halftone", params: {} },
@@ -78,6 +80,7 @@ function directivesForStyle(style: ReelStyle, slice: number): StyleDirectives {
         transitions: [
           { type: "whipPan", duration: transDuration },
           { type: "glitch", duration: Math.min(transDuration, 0.35) },
+          { type: "flash", duration: Math.min(transDuration, 0.3) },
         ],
         effects: [
           { type: "vhs-glitch", params: { scanlines: 20, rgbSplit: 35, jitter: 15 } },
@@ -158,9 +161,10 @@ export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { proj
     });
   }
 
-  // Transitions between adjacent image clips (Creative MCP Tools)
+  // Transitions between adjacent image clips (Creative MCP Tools): cycle
+  // through the style's pool so variety keeps going past 2 transitions.
   for (let i = 0; i < N - 1; i++) {
-    const trans = styleDirectives.transitions[i] ?? { type: "whipPan", duration: 0.4 };
+    const trans = styleDirectives.transitions[i % styleDirectives.transitions.length];
     steps.push({
       label: `Transition ${trans.type} (${i + 1} -> ${i + 2})`,
       tool: "add_transition",
