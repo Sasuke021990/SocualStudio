@@ -16,6 +16,11 @@ const NON_FATAL_TOOLS = new Set<string>([
   "set_clip_transform",
   "set_clip_keyframes",
   "set_color_grading",
+  "create_motion_composition",
+  "add_motion_layer",
+  "add_motion_text_animator",
+  "add_motion_text_shader_animator",
+  "insert_motion_into_editor",
 ]);
 
 export class ReelStepError extends Error {

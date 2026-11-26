@@ -39,6 +39,8 @@ interface StyleDirectives {
   effects: Array<{ type: string; params: Record<string, unknown> }>;
   /** One consistent set_color_grading payload applied to every image clip. */
   colorGrade: Record<string, unknown>;
+  /** Per-glyph animator used for kinetic hook-text popups. */
+  popupAnimator: { tool: "add_motion_text_animator" | "add_motion_text_shader_animator"; presetOrShaderId: string };
 }
 
 export function directivesForStyle(style: ReelStyle, slice: number): StyleDirectives {
@@ -57,6 +59,7 @@ export function directivesForStyle(style: ReelStyle, slice: number): StyleDirect
           { type: "glow", params: {} },
         ],
         colorGrade: { temp: -8, tint: 2, hsl: { saturation: -5 }, wheels: { shadows: { lift: -0.04 } } },
+        popupAnimator: { tool: "add_motion_text_animator", presetOrShaderId: "text-reveal-up" },
       };
     case "tech-explainer":
       return {
@@ -69,6 +72,7 @@ export function directivesForStyle(style: ReelStyle, slice: number): StyleDirect
           { type: "halftone", params: {} },
         ],
         colorGrade: { temp: -4, tint: 0, hsl: { saturation: -10 } },
+        popupAnimator: { tool: "add_motion_text_shader_animator", presetOrShaderId: "scanline-materialize" },
       };
     case "minimalist":
       return {
@@ -78,6 +82,7 @@ export function directivesForStyle(style: ReelStyle, slice: number): StyleDirect
         ],
         effects: [],
         colorGrade: { temp: 0, tint: 0, hsl: { saturation: -2 } },
+        popupAnimator: { tool: "add_motion_text_animator", presetOrShaderId: "text-type-on" },
       };
     case "high-energy":
     default:
@@ -92,6 +97,7 @@ export function directivesForStyle(style: ReelStyle, slice: number): StyleDirect
           { type: "chromatic-aberration", params: {} },
         ],
         colorGrade: { temp: 6, tint: -2, hsl: { saturation: 18 } },
+        popupAnimator: { tool: "add_motion_text_shader_animator", presetOrShaderId: "glyph-dissolve" },
       };
   }
 }
@@ -223,6 +229,45 @@ export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { proj
       });
     }
   }
+
+  // Kinetic hook-text popups (MrBeast-style): each one is its own Motion
+  // Creator composition with a single per-glyph animated text layer, placed
+  // onto the main timeline. All four steps are non-fatal creative polish —
+  // if the composition fails to create, the dependent layer/animator/insert
+  // steps fail too (their tokens won't resolve), which is an accepted
+  // cascade rather than special-cased handling (see design doc section 9e).
+  // Known limitation carried over from the original plain-text hook: no
+  // code-side handling of popup.position is attempted here either.
+  spec.kineticPopups.forEach((popup, n) => {
+    const compositionToken = `__composition:popup${n}__`;
+    const layerToken = `__layer:popup${n}__`;
+    steps.push({
+      label: `Create popup composition "${popup.text}"`,
+      tool: "create_motion_composition",
+      args: { name: `Popup ${n + 1}: ${popup.text}`, duration: popup.duration },
+      captureAs: compositionToken,
+    });
+    steps.push({
+      label: `Add popup text layer "${popup.text}"`,
+      tool: "add_motion_layer",
+      args: { compositionId: compositionToken, layerType: "text", text: popup.text },
+      captureAs: layerToken,
+    });
+    const animator = styleDirectives.popupAnimator;
+    steps.push({
+      label: `Animate popup "${popup.text}"`,
+      tool: animator.tool,
+      args:
+        animator.tool === "add_motion_text_shader_animator"
+          ? { compositionId: compositionToken, layerId: layerToken, shaderId: animator.presetOrShaderId }
+          : { compositionId: compositionToken, layerId: layerToken, presetId: animator.presetOrShaderId },
+    });
+    steps.push({
+      label: `Place popup "${popup.text}" on timeline`,
+      tool: "insert_motion_into_editor",
+      args: { compositionId: compositionToken, startTime: popup.startTime, duration: popup.duration },
+    });
+  });
 
   // Voice speed-fitting (Solution C: targets D - 0.5s for clean audio conclusion)
   const targetSpeechSec = D - 0.5;

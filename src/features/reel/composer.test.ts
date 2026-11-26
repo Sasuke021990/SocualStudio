@@ -99,3 +99,40 @@ test("different styles get different color grades", () => {
   assert.notDeepEqual(cinematic, highEnergy);
   assert.notDeepEqual(cinematic, minimalist);
 });
+
+test("each kineticPopup produces a 4-step motion-composition chain wired by captureAs tokens", () => {
+  const spec = specWith({
+    style: "high-energy",
+    kineticPopups: [{ text: "WAIT FOR IT", startTime: 1, duration: 1.5, position: "center", color: "#FFE600", strokeColor: "#000000", fontSize: 76 }],
+  });
+  const steps = composeReelPlan(spec, assetsWith(), { projectName: "t" });
+  const names = steps.map((s) => s.tool);
+  assert.ok(names.includes("create_motion_composition"));
+  assert.ok(names.includes("add_motion_layer"));
+  assert.ok(names.includes("add_motion_text_shader_animator")); // high-energy's preset
+  assert.ok(names.includes("insert_motion_into_editor"));
+  const insertStep = steps.find((s) => s.tool === "insert_motion_into_editor")!;
+  assert.equal((insertStep.args as { startTime: number }).startTime, 1);
+  assert.equal((insertStep.args as { duration: number }).duration, 1.5);
+});
+
+test("multiple kineticPopups each get their own composition/layer tokens, not a shared one", () => {
+  const spec = specWith({
+    kineticPopups: [
+      { text: "A", startTime: 0, duration: 1, position: "center", color: "#FFE600", strokeColor: "#000000", fontSize: 76 },
+      { text: "B", startTime: 2, duration: 1, position: "center", color: "#FFE600", strokeColor: "#000000", fontSize: 76 },
+    ],
+  });
+  const steps = composeReelPlan(spec, assetsWith(), { projectName: "t" });
+  const compositionSteps = steps.filter((s) => s.tool === "create_motion_composition");
+  assert.equal(compositionSteps.length, 2);
+  assert.notEqual(compositionSteps[0].captureAs, compositionSteps[1].captureAs);
+  const layerSteps = steps.filter((s) => s.tool === "add_motion_layer");
+  assert.equal((layerSteps[0].args as { compositionId: string }).compositionId, compositionSteps[0].captureAs);
+  assert.equal((layerSteps[1].args as { compositionId: string }).compositionId, compositionSteps[1].captureAs);
+});
+
+test("no kineticPopups means no motion-composition steps", () => {
+  const steps = composeReelPlan(specWith({ kineticPopups: [] }), assetsWith(), { projectName: "t" });
+  assert.ok(!steps.some((s) => s.tool === "create_motion_composition"));
+});
