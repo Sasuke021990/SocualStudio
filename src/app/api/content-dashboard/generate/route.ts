@@ -121,14 +121,39 @@ ${INDIA_IMAGE_CONTEXT}
 
 Generate ONE complete ${contentType} variation${topic ? ` about "${topic}"` : ""} in a single JSON object.
 
-ENGAGEMENT RULES:
-- Hook in the first line to stop the scroll.
-- Use metaphors, emotional angles, or relatable moments in a conversational human voice.
-- End with an engaging question or bold statement.
+HOOK FORMULAS — open the caption with ONE of these, whichever fits the topic best:
+1. Bold claim — a surprising fact, stat, or opinion stated flat, no hedging
+2. Question — something the reader can't help answering in their head
+3. Relatable pain — name a frustration the audience feels often, stated plainly
+4. Mistake callout — "Stop doing X" naming a common wrong move
+5. Number promise — "3 things that...", "in 10 seconds you'll..."
+6. Contrarian — challenge common advice ("Most advice about X is wrong")
+7. Story drop — open mid-scene, not at the beginning ("So there I was...")
 
-STRICT VISUAL RULES (ZERO TEXT POLICY):
-- The image MUST visually depict the exact message, metaphor, and emotion of the caption.
+CAPTION STRUCTURE:
+- Line 1: the hook, standing alone, no setup.
+- Middle: 1-3 short lines building the story, insight, or proof — one idea per line, no run-on paragraphs.
+- Last line: an engaging question or a bold closing statement that invites a comment.
+- Trade vague adjectives ("amazing", "best", "game-changing") for concrete, checkable specifics: a number, a named benefit, a before/after, a timeframe.
+- Conversational human voice throughout — write like a person talking to one reader, not a brand broadcasting to a crowd.
+
+HASHTAG STRATEGY:
+- 5-8 tags: mix 1-2 broad/high-volume tags, 2-3 niche/industry tags, 1-2 brand or campaign-specific tags, and 1 community tag (e.g. indiancreators, indianstartup) where relevant.
+- No generic filler tags (#love, #instagood, #follow4follow).
+
+CTA GUIDANCE:
+- A direct instruction, not a vague nudge: "Save this for later", "Tag someone who needs this", "DM us 'START'" beat "Check it out" or "Learn more" when the content supports something sharper.
+
+VISUAL CONCEPT RULES:
+- The image MUST visually depict the exact message, metaphor, and emotion of the caption — not a generic stock-photo mood.
+- Pick whichever subject type sells the message hardest; vary it across variations instead of defaulting to a human portrait every time.
 - ZERO TEXT IN IMAGE: NEVER include words, letters, captions, typography, signs, labels, screens with readable text, company names, logos, badges, or watermarks in any imageConcept field. Pure visual storytelling only.
+- Every field should be specific and sensory — name the material, the light quality, the exact color, the lens/shot type — not a generic description a stock photo site would already have a thousand of.
+
+IMAGE CONCEPT DIRECTIONS (pick whichever fits the caption best — see "Choosing the Subject" above for when each applies):
+- Human focus: "subject": "Young Indian entrepreneur smiling warmly while holding a handcrafted ceramic cup"
+- Product focus: "subject": "Single handcrafted ceramic cup catching morning light, steam rising in a soft curl, macro shot"
+- Environment/mood focus: "subject": "Empty handcrafted ceramic cups arranged in a row on a sunlit windowsill, rangoli faintly visible below"
 
 Return ONLY valid JSON matching this exact structure (replace example strings with your generated content; no markdown fences, no comments, no TypeScript types):
 {
