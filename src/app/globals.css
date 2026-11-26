@@ -1,7 +1,6 @@
 @layer ui-sdk;
 
 @import "tailwindcss";
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap");
 
 :root {
   --background: #0b0d12;
@@ -18,7 +17,7 @@
   --amber: #fbbf24;
   --rose: #fb7185;
   --radius: 14px;
-  --font-sans: "DM Sans", var(--font-geist-sans), Inter, system-ui, sans-serif;
+  --font-sans: var(--font-dm-sans), var(--font-geist-sans), Inter, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), monospace;
 }
 

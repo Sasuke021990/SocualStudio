@@ -30,9 +30,40 @@ export async function POST(request: Request) {
   }
   const voiceName = (typeof name === "string" && name.trim()) || file.name.replace(/\.[^.]+$/, "");
 
-  const buffer = await file.arrayBuffer();
-  const referencePath = await saveReferenceFile(buffer, file.name);
-  const voice = await saveClonedVoice({ name: voiceName, referencePath, referenceName: file.name });
+  // The TTS engine requires PCM WAV — convert MP3/M4A/etc. uploads with ffmpeg.
+  let buffer = await file.arrayBuffer();
+  let referenceName = file.name;
+  if (!/\.wav$/i.test(file.name)) {
+    const { writeFile, readFile, unlink } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { execFile } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+    const run = promisify(execFile);
+    const stem = join(tmpdir(), `ref-${Date.now()}`);
+    const inPath = `${stem}-in`;
+    const outPath = `${stem}-ref.wav`;
+    try {
+      await writeFile(inPath, Buffer.from(buffer));
+      await run("ffmpeg", ["-y", "-i", inPath, "-ac", "1", "-ar", "44100", "-c:a", "pcm_s16le", outPath], {
+        timeout: 60_000,
+        windowsHide: true,
+      });
+      buffer = (await readFile(outPath)).buffer as ArrayBuffer;
+      referenceName = `${file.name.replace(/\.[^.]+$/, "")}.wav`;
+    } catch {
+      return NextResponse.json(
+        { error: "Could not convert audio to WAV. Upload a WAV/MP3/M4A file and make sure ffmpeg is installed." },
+        { status: 400 },
+      );
+    } finally {
+      await unlink(inPath).catch(() => {});
+      await unlink(outPath).catch(() => {});
+    }
+  }
+
+  const referencePath = await saveReferenceFile(buffer, referenceName);
+  const voice = await saveClonedVoice({ name: voiceName, referencePath, referenceName });
   return NextResponse.json({ voice }, { status: 201 });
 }
 

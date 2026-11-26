@@ -8,7 +8,9 @@ interface VoiceProfile {
   id: string;
   name: string;
   kind: "preset" | "cloned";
+  description?: string;
   instruct?: string;
+  pitchShift?: number;
   referenceName?: string;
   createdAt: string;
 }
@@ -81,7 +83,7 @@ export function VoiceSetup() {
       const res = await fetch("/api/voice/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: `Hello! This is ${name}, your voice for social media content.`, voiceId }),
+        body: JSON.stringify({ text: `Namaste! This is ${name}, ready for your social media content.`, voiceId }),
       });
       const data = await res.json() as { audio?: { url: string }; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Generation failed");
@@ -156,7 +158,7 @@ export function VoiceSetup() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".wav,.mp3,.flac,.ogg"
+            accept=".wav,.mp3,.flac,.ogg,.m4a,.mp4,.aac"
             onChange={handleUpload}
             className="hidden"
           />
@@ -231,7 +233,7 @@ export function VoiceSetup() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium text-zinc-900 dark:text-zinc-50">{v.name}</div>
-                <div className="truncate text-xs text-zinc-500">{v.instruct}</div>
+                <div className="truncate text-xs text-zinc-500">{v.description || v.instruct}</div>
               </div>
               <button
                 type="button"

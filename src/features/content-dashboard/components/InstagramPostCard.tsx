@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { PostVariation } from "../variations";
-import { assembleImagePrompt } from "../variations";
+import { assembleImagePrompt, DEFAULT_NO_TEXT_NEGATIVE_PROMPT } from "../variations";
 import { exclusivePlay } from "@/features/voice/audio-coordinator";
 import { acquireGenerationLock, releaseGenerationLock } from "../generation-lock";
 import { useGenerationLocked } from "../useGenerationLock";
@@ -56,7 +56,13 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
       const res = await fetch("/api/comfyui/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: fullPrompt, connectionId: toolId ?? undefined, width: 1024, height: 1024 }),
+        body: JSON.stringify({
+          prompt: fullPrompt,
+          negativePrompt: DEFAULT_NO_TEXT_NEGATIVE_PROMPT,
+          connectionId: toolId ?? undefined,
+          width: 1024,
+          height: 1024,
+        }),
       });
       const data = (await res.json()) as { images?: GeneratedImage[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Image generation failed");
@@ -295,11 +301,13 @@ export function InstagramPostCard({ variation, selected, onToggleSelect, brandNa
 
       {/* Hashtags */}
       <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 px-3.5 pb-2">
-        {variation.hashtags.map((tag, i) => (
-          <span key={i} className="text-[12px]" style={{ color: "#00376b" }}>
-            #{tag.replace(/^#/, "")}
-          </span>
-        ))}
+        {(variation.hashtags ?? [])
+          .filter((tag): tag is string => typeof tag === "string" && tag.trim().length > 0)
+          .map((tag, i) => (
+            <span key={i} className="text-[12px]" style={{ color: "#00376b" }}>
+              #{tag.replace(/^#/, "")}
+            </span>
+          ))}
       </div>
 
       {/* CTA */}

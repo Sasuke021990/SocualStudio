@@ -3,6 +3,7 @@ import {
   VOICE_SPEED_MIN,
   type ReelAssets,
   type ReelSpec,
+  type ReelStyle,
 } from "./schemas";
 
 /**
@@ -30,13 +31,67 @@ const AUDIO_TRACK_2 = "__audioTrack2__";
 const clipToken = (mediaName: string) => `__clip:${mediaName}__`;
 const mediaToken = (mediaName: string) => `__media:${mediaName}__`;
 
+interface StyleDirectives {
+  transitions: Array<{ type: string; duration: number }>;
+  effects: Array<{ clipIndex: number; type: string; params: Record<string, unknown> }>;
+}
+
+function directivesForStyle(style: ReelStyle, slice: number): StyleDirectives {
+  const transDuration = Math.min(+(slice * 0.2).toFixed(2), 0.45);
+
+  switch (style) {
+    case "cinematic":
+      return {
+        transitions: [
+          { type: "filmBurn", duration: transDuration },
+          { type: "zoom", duration: transDuration },
+        ],
+        effects: [
+          { clipIndex: 0, type: "vignette", params: {} },
+          { clipIndex: 1, type: "glow", params: {} },
+        ],
+      };
+    case "tech-explainer":
+      return {
+        transitions: [
+          { type: "push", duration: transDuration },
+          { type: "radialWipe", duration: transDuration },
+        ],
+        effects: [
+          { clipIndex: 0, type: "halftone", params: {} },
+        ],
+      };
+    case "minimalist":
+      return {
+        transitions: [
+          { type: "crossfade", duration: transDuration },
+          { type: "crossfade", duration: transDuration },
+        ],
+        effects: [],
+      };
+    case "high-energy":
+    default:
+      return {
+        transitions: [
+          { type: "whipPan", duration: transDuration },
+          { type: "glitch", duration: Math.min(transDuration, 0.35) },
+        ],
+        effects: [
+          { clipIndex: 0, type: "vhs-glitch", params: { scanlines: 20, rgbSplit: 35, jitter: 15 } },
+          { clipIndex: 1, type: "chromatic-aberration", params: {} },
+        ],
+      };
+  }
+}
+
 /** Split narration into caption sentences (verbatim speech text). */
 export function captionCues(narration: string, durationSeconds: number, hasCta: boolean): Array<{ text: string; startTime: number; endTime: number }> {
   const sentences = narration
     .split(/(?<=[.!?])\s+/)
     .map((s) => s.trim())
     .filter(Boolean);
-  const speechEnd = hasCta ? durationSeconds * 0.8 : durationSeconds;
+  // Speech finishes 0.5s before end of reel for clean audio finish (Solution C)
+  const speechEnd = hasCta ? durationSeconds * 0.8 : durationSeconds - 0.5;
   const totalChars = sentences.reduce((s, x) => s + x.length, 0) || 1;
   const cues: Array<{ text: string; startTime: number; endTime: number }> = [];
   let t = 0;
@@ -53,6 +108,7 @@ export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { proj
   const N = spec.imageCount;
   const slice = +(D / N).toFixed(3);
   const steps: ReelToolStep[] = [];
+  const styleDirectives = directivesForStyle(spec.style, slice);
 
   steps.push({ label: "Create project", tool: "create_project", args: { name: opts.projectName, width: 1080, height: 1920, frameRate: 30 } });
 
@@ -85,24 +141,60 @@ export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { proj
 
   steps.push({ label: "Resolve clips", tool: "noop", args: {}, resolve: ["clips"] });
 
-  // Exact slice lengths (image clips default to 5s)
+  // Exact slice lengths and 9:16 cover fit
   for (let i = 0; i < N; i++) {
     steps.push({
       label: `Trim image ${i + 1}/${N} to ${slice}s`,
       tool: "trim_clip",
       args: { clipId: clipToken(`img${i}`), inPoint: 0, outPoint: slice },
     });
+    steps.push({
+      label: `Cover fit image ${i + 1}/${N}`,
+      tool: "set_clip_transform",
+      args: { clipId: clipToken(`img${i}`), transform: { fitMode: "cover" } },
+    });
   }
 
-  // Voice fits exactly D seconds (micro speed-fit, validated within tolerance)
-  const speed = +(assets.voiceSeconds / D).toFixed(3);
+  // Transitions between adjacent image clips (Creative MCP Tools)
+  for (let i = 0; i < N - 1; i++) {
+    const trans = styleDirectives.transitions[i] ?? { type: "whipPan", duration: 0.4 };
+    steps.push({
+      label: `Transition ${trans.type} (${i + 1} -> ${i + 2})`,
+      tool: "add_transition",
+      args: {
+        clipAId: clipToken(`img${i}`),
+        clipBId: clipToken(`img${i + 1}`),
+        transitionType: trans.type,
+        duration: trans.duration,
+      },
+    });
+  }
+
+  // Visual Effects (VFX MCP Tools)
+  for (const ef of styleDirectives.effects) {
+    if (ef.clipIndex < N) {
+      steps.push({
+        label: `VFX ${ef.type} on Image ${ef.clipIndex + 1}`,
+        tool: "add_video_effect",
+        args: {
+          clipId: clipToken(`img${ef.clipIndex}`),
+          effectType: ef.type,
+          params: ef.params,
+        },
+      });
+    }
+  }
+
+  // Voice speed-fitting (Solution C: targets D - 0.5s for clean audio conclusion)
+  const targetSpeechSec = D - 0.5;
+  const speed = +(assets.voiceSeconds / targetSpeechSec).toFixed(3);
   const clamped = Math.min(VOICE_SPEED_MAX, Math.max(VOICE_SPEED_MIN, speed));
   if (Math.abs(clamped - 1) > 0.01) {
-    steps.push({ label: `Fit voice to ${D}s`, tool: "set_clip_speed", args: { clipId: clipToken("voice"), speed: clamped } });
+    steps.push({ label: `Fit voice to ${targetSpeechSec}s`, tool: "set_clip_speed", args: { clipId: clipToken("voice"), speed: clamped } });
   }
   steps.push({ label: "Voice loudness", tool: "normalize_clip_loudness", args: { clipId: clipToken("voice"), targetLufs: -14 } });
 
-  // Music covers the whole reel, quiet, with fades
+  // Music covers the whole reel, ducked, with fades
   if (assets.musicSeconds < D - 0.2) {
     steps.push({
       label: `Stretch music to ${D}s`,
@@ -120,7 +212,7 @@ export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { proj
     args: { clipId: clipToken("music"), fadeIn: spec.audio.fadeInSec, fadeOut: spec.audio.fadeOutSec },
   });
 
-  // Bottom captions, synced to the voice; optional CTA end-card
+  // Bottom captions with safeMargin 0.20
   const cues = captionCues(spec.narration, D, Boolean(spec.cta));
   for (const cue of cues) {
     steps.push({ label: `Caption "${cue.text.slice(0, 24)}…"`, tool: "add_subtitle", args: { ...cue } });

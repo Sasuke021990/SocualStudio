@@ -83,6 +83,39 @@ export async function createContentItem(input: {
   return { ...item };
 }
 
+export async function createManyContentItems(
+  inputs: Array<{
+    brandName: string;
+    brainId: string;
+    type: ContentType;
+    title: string;
+    prompt: string;
+    output: string;
+    platform: string;
+    variation?: ContentItem["variation"];
+  }>,
+): Promise<ContentItem[]> {
+  if (inputs.length === 0) return [];
+  const all = await ensureItems();
+  const timestamp = now();
+  const created: ContentItem[] = inputs.map((input) => ({
+    id: makeId(),
+    brandName: input.brandName,
+    brainId: input.brainId,
+    type: input.type,
+    title: input.title,
+    prompt: input.prompt,
+    output: input.output,
+    status: "draft",
+    platform: input.platform,
+    variation: input.variation,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  }));
+  await persist([...created, ...all]);
+  return created.map((i) => ({ ...i }));
+}
+
 export async function updateContentItem(
   id: string,
   patch: Partial<Pick<ContentItem, "title" | "output" | "variation">>,

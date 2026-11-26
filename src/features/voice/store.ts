@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile, unlink } from "node:fs/promises";
 import { join, basename } from "node:path";
-import type { VoiceProfile } from "./types";
+import { VOICE_PRESETS, type VoiceProfile } from "./types";
 
 const DATA_DIR = join(process.cwd(), "data", "voice");
 const VOICES_PATH = join(DATA_DIR, "voices.json");
@@ -64,6 +64,8 @@ export async function removeClonedVoice(id: string): Promise<boolean> {
 }
 
 export async function getVoiceById(id: string): Promise<VoiceProfile | null> {
+  const preset = VOICE_PRESETS.find((v) => v.id === id);
+  if (preset) return preset;
   const s = state ?? (await loadFromDisk());
   return s.cloned.find((v) => v.id === id) ?? null;
 }

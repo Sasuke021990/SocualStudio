@@ -20,7 +20,7 @@ export async function GET(request: Request) {
       headers: {
         "Content-Type": "video/mp4",
         "Content-Length": String(st.size),
-        "Cache-Control": "public, max-age=3600",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
         "Content-Disposition": "inline; filename=reel.mp4",
       },
     });

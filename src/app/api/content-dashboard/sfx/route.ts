@@ -59,7 +59,7 @@ export async function POST(request: Request) {
 ${INDIA_SOUND_CONTEXT}
 
 Rules:
-- Trending Reels/Shorts energy: hook-y, satisfying, scroll-stopping — layered beats, risers, whooshes, emotional builds, festival or desi percussion where it fits
+- Trending Reels/Shorts energy: fast-tempo, high-energy, scroll-stopping — layered 808 beats, risers, whooshes, emotional builds, drill/trap groove or desi percussion where it fits
 - Match the emotion of the caption exactly
 - Include 2-3 layered concrete elements (beat texture, accent sound, ambience)
 - Plain descriptive English, no hashtags or quotes

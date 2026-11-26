@@ -59,6 +59,11 @@ export async function executeReelPlan(server: McpServerConfig, steps: ReelToolSt
       const text = await conn.callTool(step.tool, args);
 
       if (ERROR_CODES.test(text)) {
+        // Creative polish steps (transitions / VFX) should never abort the whole render if parameters miss
+        if (step.tool === "add_transition" || step.tool === "add_video_effect" || step.tool === "set_clip_transform") {
+          console.warn(`[reel] non-fatal creative step warning (${step.label}):`, text.slice(0, 300));
+          continue;
+        }
         throw new ReelStepError(step.label, text.slice(0, 400));
       }
 

@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { basename, join } from "node:path";
+import { stat } from "node:fs/promises";
 import { getContentItem, updateContentItem } from "@/features/content-dashboard/store";
+import { loadBrandProfileJson } from "@/features/brand-brain/file-storage";
+import { DEFAULT_NO_TEXT_NEGATIVE_PROMPT } from "@/features/content-dashboard/variations";
 import type { ContentItem } from "@/features/content-dashboard/types";
 import { getComfyUIState, getActiveConnection } from "@/features/comfyui/store";
 import { generateComfyImages } from "@/features/comfyui/generate";
 import { freeComfyUIModels } from "@/features/comfyui/free";
+import { autoFreeVram } from "@/features/vram";
 import { unloadLocalModel } from "@/features/ai-provider/unload";
 import { getProviderConfig } from "@/features/ai-provider/store";
 import { getMcpConfig } from "@/features/mcp-client/store";
@@ -94,6 +98,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "OpenReel MCP server is not connected (Settings → MCP)" }, { status: 400 });
   }
 
+  const brandProfile = item.brainId
+    ? await loadBrandProfileJson(item.brainId).catch(() => null)
+    : null;
+
   const job = createReelJob();
   void runReelJob(job, {
     itemId: item.id,
@@ -101,7 +109,7 @@ export async function POST(request: Request) {
     variation: variation!,
     spec,
     musicFile,
-    voiceId: parsed.data.voiceId ?? undefined,
+    voiceId: parsed.data.voiceId ?? brandProfile?.recommendedVoiceId ?? undefined,
     existingImageUrl: parsed.data.imageUrl ?? variation?.generatedImage ?? undefined,
     connection,
     openreel,
@@ -128,19 +136,31 @@ async function runReelJob(job: ReelJob, deps: RunDeps): Promise<void> {
     // ── 1. Storyboard images (VRAM: unload LLM first, free Comfy after) ──
     await unloadLocalModel(await getProviderConfig());
     const imagePaths: string[] = [];
-    // The post's generated image becomes storyboard shot 1 — only the missing
-    // shots are generated fresh.
-    if (existingImageUrl) {
-      job.phase = "Using existing image…";
-      const absUrl = existingImageUrl.startsWith("http")
-        ? existingImageUrl
-        : `http://127.0.0.1:3000${existingImageUrl}`;
-      imagePaths.push(await downloadIntoReelDir(itemId, absUrl, "img0.png"));
-    }
-    for (let i = imagePaths.length; i < spec.imageCount; i++) {
+    const workDir = await ensureReelDir(itemId);
+    for (let i = 0; i < spec.imageCount; i++) {
+      const candidatePath = join(workDir, `img${i}.png`);
+      const existingStat = await stat(candidatePath).catch(() => null);
+      if (existingStat && existingStat.size > 0) {
+        job.phase = `Reusing existing storyboard image ${i + 1}/${spec.imageCount}…`;
+        imagePaths.push(candidatePath);
+        continue;
+      }
+      if (i === 0 && existingImageUrl) {
+        job.phase = "Using existing image…";
+        const absUrl = existingImageUrl.startsWith("http")
+          ? existingImageUrl
+          : `http://127.0.0.1:3000${existingImageUrl}`;
+        imagePaths.push(await downloadIntoReelDir(itemId, absUrl, "img0.png"));
+        continue;
+      }
       job.phase = `Generating image ${i + 1}/${spec.imageCount}…`;
       // Reel storyboard images are 9:16 — they must fill the vertical frame.
-      const images = await generateComfyImages(connection, spec.imageBriefs[i], undefined, { width: 720, height: 1280 });
+      const images = await generateComfyImages(
+        connection,
+        spec.imageBriefs[i],
+        DEFAULT_NO_TEXT_NEGATIVE_PROMPT,
+        { width: 720, height: 1280 },
+      );
       imagePaths.push(await downloadIntoReelDir(itemId, images[0].viewUrl, `img${i}.png`));
     }
     await freeComfyUIModels();
@@ -204,7 +224,11 @@ async function runReelJob(job: ReelJob, deps: RunDeps): Promise<void> {
       },
     });
 
-    job.done = { videoUrl: `/api/reel/file?item=${itemId}`, durationSeconds: spec.durationSeconds, imageCount: spec.imageCount };
+    job.done = {
+      videoUrl: `/api/reel/file?item=${itemId}&t=${Date.now()}`,
+      durationSeconds: spec.durationSeconds,
+      imageCount: spec.imageCount,
+    };
     job.phase = "Done";
     finishReelJob(job.id);
   } catch (err) {
@@ -220,7 +244,6 @@ async function runReelJob(job: ReelJob, deps: RunDeps): Promise<void> {
     job.phase = "Failed";
     finishReelJob(job.id);
   } finally {
-    // LLM stays unloaded after generation — it loads on demand for the next
-    // content call (VRAM stays free for the GPU while idle).
+    await autoFreeVram({ target: "all" });
   }
 }

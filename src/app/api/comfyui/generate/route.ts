@@ -4,6 +4,8 @@ import { getActiveConnection, getComfyUIState } from "@/features/comfyui/store";
 import { getProviderConfig } from "@/features/ai-provider/store";
 import { unloadLocalModel } from "@/features/ai-provider/unload";
 import { generateComfyImages } from "@/features/comfyui/generate";
+import { autoFreeVram } from "@/features/vram";
+import { DEFAULT_NO_TEXT_NEGATIVE_PROMPT } from "@/features/content-dashboard/variations";
 
 const generateSchema = z.object({
   prompt: z.string().min(1, "Image prompt required"),
@@ -49,7 +51,10 @@ export async function POST(request: Request) {
       parsed.data.width && parsed.data.height
         ? { width: parsed.data.width, height: parsed.data.height }
         : undefined;
-    const images = await generateComfyImages(connection, parsed.data.prompt, parsed.data.negativePrompt, size);
+    const effectiveNegativePrompt = parsed.data.negativePrompt?.trim()
+      ? `${parsed.data.negativePrompt.trim()}, ${DEFAULT_NO_TEXT_NEGATIVE_PROMPT}`
+      : DEFAULT_NO_TEXT_NEGATIVE_PROMPT;
+    const images = await generateComfyImages(connection, parsed.data.prompt, effectiveNegativePrompt, size);
     // Proxy through our API to avoid browser CORS issues with ComfyUI /view
     const proxied = images.map((img) => ({
       ...img,
@@ -60,5 +65,8 @@ export async function POST(request: Request) {
     const msg = err instanceof Error ? err.message : "Image generation failed";
     const status = /timed out/i.test(msg) ? 504 : /rejected|no ComfyUI|workflow/i.test(msg) ? 400 : 500;
     return NextResponse.json({ error: msg }, { status });
+  } finally {
+    // Automatically free ComfyUI models & VRAM once image generation completes
+    await autoFreeVram({ target: "comfyui" });
   }
 }

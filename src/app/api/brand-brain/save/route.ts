@@ -1,99 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { saveBrandBrainFile } from "@/features/brand-brain/file-storage";
+import { saveBrandBrainFile, saveBrandProfileJson, buildMarkdownFromProfile } from "@/features/brand-brain/file-storage";
+import { brandBrain2ProfileSchema } from "@/features/brand-brain/schemas";
+import type { BrandBrain2Profile } from "@/features/brand-brain/types";
 
-const saveSchema = z.object({
+const saveRequestSchema = z.object({
   brainId: z.string().min(1, "brainId is required"),
-  brand: z.object({
-    brandName: z.string().min(1, "brandName is required"),
-    tagline: z.string().optional(),
-    business: z.string(),
-    industry: z.string(),
-    usp: z.string(),
-    tone: z.string(),
-    brandVoice: z.string().optional(),
-    visualStyle: z.string().optional(),
-    audiencePains: z.array(z.string()),
-    audienceDesires: z.array(z.string()),
-    benefits: z.array(z.string()),
-    keyMessages: z.array(z.string()).optional(),
-    wordsToUse: z.array(z.string()),
-    wordsToAvoid: z.array(z.string()),
-    competitors: z.array(z.string()),
-  }),
+  brand: z.record(z.string(), z.unknown()),
 });
-
-type BrandData = z.infer<typeof saveSchema>["brand"];
-
-function buildMarkdown(data: BrandData): string {
-  const lines: string[] = [];
-  lines.push(`# ${data.brandName}`);
-  if (data.tagline) lines.push(`*${data.tagline}*`);
-  lines.push("");
-  lines.push(`> Saved: ${new Date().toISOString()}`);
-  lines.push("");
-
-  lines.push("## Business");
-  lines.push(data.business);
-  lines.push("");
-
-  lines.push("## Industry");
-  lines.push(data.industry);
-  lines.push("");
-
-  lines.push("## Unique Selling Proposition");
-  lines.push(data.usp);
-  lines.push("");
-
-  lines.push("## Tone of Voice");
-  lines.push(data.tone);
-  if (data.brandVoice) {
-    lines.push("");
-    lines.push("**Brand Voice:** " + data.brandVoice);
-  }
-  lines.push("");
-
-  if (data.visualStyle) {
-    lines.push("## Visual Style");
-    lines.push(data.visualStyle);
-    lines.push("");
-  }
-
-  lines.push("## Target Audience");
-  lines.push("");
-  lines.push("### Pains");
-  for (const p of data.audiencePains) lines.push(`- ${p}`);
-  lines.push("");
-  lines.push("### Desires");
-  for (const d of data.audienceDesires) lines.push(`- ${d}`);
-  lines.push("");
-
-  lines.push("## Benefits");
-  for (const b of data.benefits) lines.push(`- ${b}`);
-  lines.push("");
-
-  if (data.keyMessages?.length) {
-    lines.push("## Key Messages");
-    for (const m of data.keyMessages) lines.push(`- ${m}`);
-    lines.push("");
-  }
-
-  lines.push("## Words to Use");
-  for (const w of data.wordsToUse) lines.push(`- ${w}`);
-  lines.push("");
-
-  lines.push("## Words to Avoid");
-  for (const w of data.wordsToAvoid) lines.push(`- ${w}`);
-  lines.push("");
-
-  if (data.competitors.length) {
-    lines.push("## Competitors");
-    for (const c of data.competitors) lines.push(`- ${c}`);
-    lines.push("");
-  }
-
-  return lines.join("\n");
-}
 
 export async function POST(request: Request) {
   const raw = await request.text();
@@ -104,7 +18,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const parsed = saveSchema.safeParse(body);
+  const parsed = saveRequestSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid request", details: parsed.error.issues },
@@ -112,9 +26,62 @@ export async function POST(request: Request) {
     );
   }
 
-  const { brainId, brand } = parsed.data;
-  const markdown = buildMarkdown(brand);
-  const { path, fileName } = await saveBrandBrainFile(brainId, brand.brandName, markdown);
+  const { brainId, brand: rawBrand } = parsed.data;
 
-  return NextResponse.json({ file: { path, fileName }, markdown });
+  // Normalize legacy and Brand Brain 2.0 fields
+  const normalized: Partial<BrandBrain2Profile> = {
+    brandName: String(rawBrand.brandName || "My Brand"),
+    tagline: String(rawBrand.tagline || ""),
+    business: String(rawBrand.business || ""),
+    industry: String(rawBrand.industry || ""),
+    usp: String(rawBrand.usp || ""),
+    mission: String(rawBrand.mission || ""),
+    founderPersona: String(rawBrand.founderPersona || ""),
+    demographics: typeof rawBrand.demographics === "object" && rawBrand.demographics !== null
+      ? (rawBrand.demographics as BrandBrain2Profile["demographics"])
+      : { targetRoles: [], ageBracket: "20-40", geography: "Global / India" },
+    audiencePains: Array.isArray(rawBrand.audiencePains) ? (rawBrand.audiencePains as string[]) : [],
+    audienceDesires: Array.isArray(rawBrand.audienceDesires) ? (rawBrand.audienceDesires as string[]) : [],
+    objections: Array.isArray(rawBrand.objections) ? (rawBrand.objections as string[]) : [],
+    visualStyle: String(rawBrand.visualStyle || "Modern Clean High-Tech"),
+    colorPalette: typeof rawBrand.colorPalette === "object" && rawBrand.colorPalette !== null
+      ? (rawBrand.colorPalette as BrandBrain2Profile["colorPalette"])
+      : { primary: "#0A0F1D", secondary: "#6366F1", accent: "#06B6D4" },
+    lightingStyle: String(rawBrand.lightingStyle || "Dramatic studio volumetric rim lighting"),
+    compositionStyle: String(rawBrand.compositionStyle || "Centered cinematic subject, shallow depth of field"),
+    imagePromptKeywords: Array.isArray(rawBrand.imagePromptKeywords) ? (rawBrand.imagePromptKeywords as string[]) : [],
+    voicePersona: String(rawBrand.voicePersona || rawBrand.tone || "Confident modern creator"),
+    recommendedVoiceId: String(rawBrand.recommendedVoiceId || "preset-energetic-host"),
+    soundBedGenre: String(rawBrand.soundBedGenre || "808 Trending Trap / Drill"),
+    soundBedBpm: typeof rawBrand.soundBedBpm === "number" ? rawBrand.soundBedBpm : 138,
+    contentPillars: Array.isArray(rawBrand.contentPillars) ? (rawBrand.contentPillars as string[]) : [],
+    viralHookAngles: Array.isArray(rawBrand.viralHookAngles) ? (rawBrand.viralHookAngles as string[]) : [],
+    wordsToUse: Array.isArray(rawBrand.wordsToUse) ? (rawBrand.wordsToUse as string[]) : [],
+    wordsToAvoid: Array.isArray(rawBrand.wordsToAvoid) ? (rawBrand.wordsToAvoid as string[]) : [],
+    competitors: Array.isArray(rawBrand.competitors) ? (rawBrand.competitors as string[]) : [],
+    coreOffers: Array.isArray(rawBrand.coreOffers)
+      ? (rawBrand.coreOffers as string[])
+      : Array.isArray(rawBrand.benefits)
+      ? (rawBrand.benefits as string[])
+      : [],
+    pricingModel: String(rawBrand.pricingModel || "Freemium"),
+    primaryCta: String(rawBrand.primaryCta || "Link in bio"),
+  };
+
+  const validated = brandBrain2ProfileSchema.parse(normalized);
+
+  // 1. Build & save rich human-readable markdown
+  const markdown = buildMarkdownFromProfile(validated);
+  const { path: mdPath, fileName } = await saveBrandBrainFile(brainId, validated.brandName, markdown);
+
+  // 2. Save structured machine-readable JSON profile
+  const jsonPath = await saveBrandProfileJson(brainId, validated);
+
+  return NextResponse.json({
+    success: true,
+    brainId,
+    brandName: validated.brandName,
+    file: { path: mdPath, fileName, jsonPath },
+    profile: validated,
+  });
 }
