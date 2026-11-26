@@ -107,19 +107,20 @@ export default function DashboardPage() {
           Brands
         </h2>
 
+        {loaded && !(brands.length > 0 && totals.total > 0 && totals.approved > 0) && (
+          <OnboardingChecklist brandCount={brands.length} postCount={totals.total} approvedCount={totals.approved} />
+        )}
+
         {!loaded ? (
           <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {[0, 1, 2].map((i) => <div key={i} className="glass h-36 animate-pulse" />)}
           </div>
         ) : brands.length === 0 ? (
-          <>
-            <div className="glass-hero mt-6 flex flex-col items-center gap-5 py-16 text-center">
-              <p className="text-lg font-semibold" style={{ color: "#fff" }}>No brands yet</p>
-              <p className="text-sm" style={{ color: "var(--muted)" }}>Create a brand and its content will show up here.</p>
-              <Link href="/projects/new" className="btn-primary">Create Your First Brand</Link>
-            </div>
-            <OnboardingChecklist brandCount={brands.length} postCount={totals.total} approvedCount={totals.approved} />
-          </>
+          <div className="glass-hero mt-6 flex flex-col items-center gap-5 py-16 text-center">
+            <p className="text-lg font-semibold" style={{ color: "#fff" }}>No brands yet</p>
+            <p className="text-sm" style={{ color: "var(--muted)" }}>Create a brand and its content will show up here.</p>
+            <Link href="/projects/new" className="btn-primary">Create Your First Brand</Link>
+          </div>
         ) : (
           <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {brands.map((b, i) => (

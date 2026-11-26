@@ -37,24 +37,30 @@ export default function ProjectsPage() {
   const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
+    let projData: { projects?: ProjectEntry[] } = {};
     try {
-      const [projRes, itemRes] = await Promise.all([
-        fetch("/api/brand-brain/projects", { cache: "no-store" }),
-        fetch("/api/content-dashboard", { cache: "no-store" }),
-      ]);
-      const projData = await projRes.json() as { projects?: ProjectEntry[] };
-      const itemData = await itemRes.json() as { items?: ContentItem[] };
-      const items = itemData.items ?? [];
-      const rows: ProjectRow[] = (projData.projects ?? []).map((p) => {
-        const mine = items.filter((i) => i.brainId === p.brainId);
-        return {
-          ...p,
-          total: mine.length,
-          approved: mine.filter((i) => i.status === "approved").length,
-        };
-      });
-      setProjects(rows);
+      const projRes = await fetch("/api/brand-brain/projects", { cache: "no-store" });
+      projData = await projRes.json() as { projects?: ProjectEntry[] };
     } catch { /* empty */ }
+
+    // Counts are a secondary enhancement: if this fetch fails, still show the
+    // brand list above with zeroed counts rather than hiding it entirely.
+    let items: ContentItem[] = [];
+    try {
+      const itemRes = await fetch("/api/content-dashboard", { cache: "no-store" });
+      const itemData = await itemRes.json() as { items?: ContentItem[] };
+      items = itemData.items ?? [];
+    } catch { /* counts stay 0 */ }
+
+    const rows: ProjectRow[] = (projData.projects ?? []).map((p) => {
+      const mine = items.filter((i) => i.brainId === p.brainId);
+      return {
+        ...p,
+        total: mine.length,
+        approved: mine.filter((i) => i.status === "approved").length,
+      };
+    });
+    setProjects(rows);
     setLoaded(true);
   }, []);
 
