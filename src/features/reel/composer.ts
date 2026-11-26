@@ -302,10 +302,21 @@ export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { proj
     steps.push({ label: `Caption "${cue.text.slice(0, 24)}…"`, tool: "add_subtitle", args: { ...cue } });
   }
   if (spec.cta) {
+    // Real end-card graphic instead of a plain subtitle. templateId is a
+    // name, not a hard id (OpenReel resolves it against list_graphic_templates
+    // at call time) — the "text" values key is a best guess; it varies per
+    // template and needs confirming against a live list_graphic_templates
+    // call. Non-fatal: if no end-card template exists, the reel still
+    // completes without a CTA card instead of failing (see design doc 9e).
     steps.push({
       label: "CTA end card",
-      tool: "add_subtitle",
-      args: { text: spec.cta, startTime: +(D * 0.8).toFixed(2), endTime: D },
+      tool: "insert_graphic_template",
+      args: {
+        templateId: "end-card",
+        startTime: +(D * 0.8).toFixed(2),
+        duration: +(D * 0.2).toFixed(2),
+        values: { text: spec.cta },
+      },
     });
   }
   steps.push({

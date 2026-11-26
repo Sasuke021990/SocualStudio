@@ -21,6 +21,7 @@ const NON_FATAL_TOOLS = new Set<string>([
   "add_motion_text_animator",
   "add_motion_text_shader_animator",
   "insert_motion_into_editor",
+  "insert_graphic_template",
 ]);
 
 export class ReelStepError extends Error {

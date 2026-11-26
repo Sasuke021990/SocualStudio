@@ -136,3 +136,18 @@ test("no kineticPopups means no motion-composition steps", () => {
   const steps = composeReelPlan(specWith({ kineticPopups: [] }), assetsWith(), { projectName: "t" });
   assert.ok(!steps.some((s) => s.tool === "create_motion_composition"));
 });
+
+test("when spec.cta is set, an insert_graphic_template end-card step replaces the plain CTA subtitle", () => {
+  const steps = composeReelPlan(specWith({ cta: "Follow for more", durationSeconds: 30 }), assetsWith(), { projectName: "t" });
+  const endCard = steps.find((s) => s.tool === "insert_graphic_template");
+  assert.ok(endCard, "expected an insert_graphic_template step");
+  assert.equal((endCard!.args as { templateId: string }).templateId, "end-card");
+  assert.equal((endCard!.args as { values: { text?: string } }).values?.text, "Follow for more");
+  assert.equal((endCard!.args as { startTime: number }).startTime, 24);
+  assert.ok(!steps.some((s) => s.tool === "add_subtitle" && (s.args as { text?: string }).text === "Follow for more"));
+});
+
+test("when spec.cta is not set, there is no insert_graphic_template step", () => {
+  const steps = composeReelPlan(specWith({ cta: undefined }), assetsWith(), { projectName: "t" });
+  assert.ok(!steps.some((s) => s.tool === "insert_graphic_template"));
+});
