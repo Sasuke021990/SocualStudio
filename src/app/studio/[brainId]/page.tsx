@@ -8,8 +8,9 @@ export default function StudioPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-screen items-center justify-center">
-          <div className="animate-pulse" style={{ color: "var(--muted)" }}>Loading...</div>
+        <main className="flex min-h-screen flex-col items-center justify-center gap-3">
+          <div className="glass h-20 w-full max-w-md animate-pulse" />
+          <div className="glass h-20 w-full max-w-md animate-pulse" />
         </main>
       }
     >

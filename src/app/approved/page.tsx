@@ -84,7 +84,7 @@ export default function ApprovedPage() {
       <div aria-hidden className="hero-grid absolute inset-x-0 top-0 h-[380px]" />
       <PageChrome back={{ href: "/dashboard", label: "Dashboard" }} />
 
-      <section className="relative mx-auto max-w-6xl px-8 pb-24 pt-12">
+      <section className="relative mx-auto max-w-6xl px-5 sm:px-8 pb-24 pt-12">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="anim-rise text-4xl font-bold tracking-tight" style={{ color: "#fff" }}>Approved Posts</h1>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { DeleteBrandDialog } from "@/components/DeleteBrandDialog";
-import { IconPlug, IconServer } from "@/components/icons";
+import { IconPlug, IconServer, IconX } from "@/components/icons";
 import type { McpConfig, McpServerConfig, McpStage, McpTransport } from "@/features/mcp-client/types";
 
 interface KvRow { key: string; value: string }
@@ -419,7 +419,7 @@ export function McpSetup() {
                         onClick={() => setForm({ ...form, args: form.args.filter((_, j) => j !== i) })}
                         aria-label={`Remove ${arg}`}
                       >
-                        ✕
+                        <IconX size={12} aria-hidden />
                       </button>
                     </span>
                   ))}
@@ -553,7 +553,7 @@ function KvEditor({
               onClick={() => onChange(rows.filter((_, j) => j !== i))}
               aria-label={`Remove ${row.key || "row"}`}
             >
-              ✕
+              <IconX size={12} aria-hidden />
             </button>
           </div>
         ))}

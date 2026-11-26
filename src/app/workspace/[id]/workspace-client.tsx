@@ -587,10 +587,10 @@ export default function WorkspaceClient() {
                   onChange={(e) => setReelStyle(e.target.value as ReelStyle)}
                   aria-label="Select reel style"
                 >
-                  <option value="high-energy">⚡ High Energy (Viral / Hype)</option>
-                  <option value="cinematic">🎬 Cinematic (Film Burn / Glow)</option>
-                  <option value="tech-explainer">💡 Tech Explainer (Clean Cuts)</option>
-                  <option value="minimalist">✨ Minimalist (Soft Crossfade)</option>
+                  <option value="high-energy">High Energy (Viral / Hype)</option>
+                  <option value="cinematic">Cinematic (Film Burn / Glow)</option>
+                  <option value="tech-explainer">Tech Explainer (Clean Cuts)</option>
+                  <option value="minimalist">Minimalist (Soft Crossfade)</option>
                 </select>
               </div>
             </div>

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { PageChrome } from "@/components/nav";
 import { StatCard } from "@/components/content-widgets";
+import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import type { ContentItem } from "@/features/content-dashboard/types";
 
 interface ProjectEntry {
@@ -69,7 +70,7 @@ export default function DashboardPage() {
       <div aria-hidden className="hero-grid absolute inset-x-0 top-0 h-[380px]" />
       <PageChrome back={{ href: "/", label: "Home" }} />
 
-      <section className="relative mx-auto max-w-6xl px-8 pb-24 pt-12">
+      <section className="relative mx-auto max-w-6xl px-5 sm:px-8 pb-24 pt-12">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="anim-rise text-4xl font-bold tracking-tight" style={{ color: "#fff" }}>Dashboard</h1>
@@ -105,6 +106,10 @@ export default function DashboardPage() {
         <h2 className="anim-rise anim-rise-2 mt-12 text-sm font-semibold uppercase tracking-widest" style={{ color: "var(--accent-bright)" }}>
           Brands
         </h2>
+
+        {loaded && !(brands.length > 0 && totals.total > 0 && totals.approved > 0) && (
+          <OnboardingChecklist brandCount={brands.length} postCount={totals.total} approvedCount={totals.approved} />
+        )}
 
         {!loaded ? (
           <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

@@ -144,7 +144,7 @@ export default function LandingPage() {
       <LandingShowcase />
 
       {/* How it works */}
-      <section className="relative mx-auto max-w-5xl px-8 pb-20">
+      <section className="relative mx-auto max-w-5xl px-5 sm:px-8 pb-20">
         <h2 className="text-center text-3xl font-bold tracking-tight" style={{ color: "#fff" }}>
           From brand to post in minutes
         </h2>
