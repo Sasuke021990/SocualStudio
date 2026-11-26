@@ -103,8 +103,15 @@ export function directivesForStyle(style: ReelStyle, slice: number): StyleDirect
   }
 }
 
-/** Speech finishes before end of reel for a clean finish (Solution C): earlier still if a CTA end-card follows. */
-function speechEndFor(durationSeconds: number, hasCta: boolean): number {
+/**
+ * Target speech finish before end of reel for a clean finish (Solution C):
+ * earlier still if a CTA end-card follows, so the voice doesn't run into the
+ * CTA's zone. This is the ASPIRATION fed into the speed-fit calculation below
+ * — the actual finish, after clamping to [VOICE_SPEED_MIN, VOICE_SPEED_MAX],
+ * can miss it. Captions must follow the real finish, not this target
+ * (Final review #9).
+ */
+function targetSpeechSeconds(durationSeconds: number, hasCta: boolean): number {
   return hasCta ? durationSeconds * 0.8 : durationSeconds - 0.5;
 }
 
@@ -231,13 +238,26 @@ export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { proj
     steps.push({
       label: `Create popup composition "${popup.text}"`,
       tool: "create_motion_composition",
-      args: { name: `Popup ${n + 1}: ${popup.text}`, duration: popup.duration },
+      args: {
+        name: `Popup ${n + 1}: ${popup.text}`,
+        duration: popup.duration,
+        width: spec.format.width,
+        height: spec.format.height,
+        frameRate: spec.format.fps,
+      },
       captureAs: compositionToken,
     });
     steps.push({
       label: `Add popup text layer "${popup.text}"`,
       tool: "add_motion_layer",
-      args: { compositionId: compositionToken, layerType: "text", text: popup.text },
+      args: {
+        compositionId: compositionToken,
+        layerType: "text",
+        text: popup.text,
+        color: popup.color,
+        strokeColor: popup.strokeColor,
+        fontSize: popup.fontSize,
+      },
       captureAs: layerToken,
     });
     const animator = styleDirectives.popupAnimator;
@@ -256,10 +276,14 @@ export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { proj
     });
   });
 
-  // Voice speed-fitting (Solution C: targets D - 0.5s for clean audio conclusion)
-  const targetSpeechSec = D - 0.5;
+  // Voice speed-fitting (Solution C): speed the voice clip to hit
+  // targetSpeechSeconds, clamped to the tool's supported speed range. The
+  // ACTUAL speech end (actualSpeechEnd) can differ from the target when
+  // clamping kicks in — captions are timed against the actual end, below.
+  const targetSpeechSec = targetSpeechSeconds(D, Boolean(spec.cta));
   const speed = +(assets.voiceSeconds / targetSpeechSec).toFixed(3);
   const clamped = Math.min(VOICE_SPEED_MAX, Math.max(VOICE_SPEED_MIN, speed));
+  const actualSpeechEnd = +(assets.voiceSeconds / clamped).toFixed(3);
   if (Math.abs(clamped - 1) > 0.01) {
     steps.push({ label: `Fit voice to ${targetSpeechSec}s`, tool: "set_clip_speed", args: { clipId: clipToken("voice"), speed: clamped } });
   }
@@ -285,26 +309,38 @@ export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { proj
 
   // Word-level animated captions: character-weighted estimate (no ASR tool
   // fits a general "transcribe this TTS audio" need in the OpenReel catalog)
-  // grouped into import_captions's word-timed transcript JSON format.
-  const speechEnd = speechEndFor(D, Boolean(spec.cta));
-  const captionSegments = estimateWordTimings(spec.narration, speechEnd);
+  // grouped into import_captions's word-timed transcript JSON format. Timed
+  // against actualSpeechEnd (the real post-speed-fit voice end), not the
+  // aspirational target — otherwise clamping silently desyncs captions from
+  // the audio (Final review #9).
+  const captionSegments = estimateWordTimings(spec.narration, actualSpeechEnd);
   steps.push({
     label: "Import word-timed captions",
     tool: "import_captions",
     args: { content: JSON.stringify({ segments: captionSegments }) },
   });
   if (spec.cta) {
-    // Real end-card graphic instead of a plain subtitle. templateId is a
-    // name, not a hard id (OpenReel resolves it against list_graphic_templates
-    // at call time) — the "text" values key is a best guess; it varies per
-    // template and needs confirming against a live list_graphic_templates
-    // call. Non-fatal: if no end-card template exists, the reel still
-    // completes without a CTA card instead of failing (see design doc 9e).
+    // Real end-card graphic instead of a plain subtitle. "end-card" is a
+    // list_graphic_templates CATEGORY filter, not a templateId (confirmed
+    // from the catalog: templateId must be "an id or name from
+    // list_graphic_templates") — Final review #5. So look the category up
+    // first and feed its first match's id into insert_graphic_template via
+    // captureAs. The "text" values key is still a best guess; it varies per
+    // template and needs confirming against a live call. Both steps are
+    // non-fatal: if no end-card template exists, the reel still completes
+    // without a CTA card instead of failing (see design doc 9e).
+    const endCardTemplateToken = "__template:end-card__";
+    steps.push({
+      label: "Find end-card template",
+      tool: "list_graphic_templates",
+      args: { category: "end-card" },
+      captureAs: endCardTemplateToken,
+    });
     steps.push({
       label: "CTA end card",
       tool: "insert_graphic_template",
       args: {
-        templateId: "end-card",
+        templateId: endCardTemplateToken,
         startTime: +(D * 0.8).toFixed(2),
         duration: +(D * 0.2).toFixed(2),
         values: { text: spec.cta },
@@ -329,9 +365,16 @@ export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { proj
     },
   });
 
-  // Pacing cleanup: tighten up filler words and dead air before export.
-  steps.push({ label: "Remove filler words", tool: "remove_filler_words", args: {} });
-  steps.push({ label: "Remove long pauses", tool: "remove_pauses", args: { minDuration: 0.4 } });
+  // Pacing cleanup: caption_qc only reports (reading speed, overlaps, gaps);
+  // it never edits the timeline, so it's safe to run unconditionally. The
+  // original plan also called for remove_filler_words/remove_pauses, but
+  // both ripple-cut the timeline (per their own catalog descriptions) —
+  // running them here, after every other step has already computed its
+  // timing against a fixed D, would silently desync the word-timed
+  // captions, popups and CTA against whatever's left of the timeline, with
+  // no non-fatal safety net because the call *succeeds* (Final review #1).
+  // The narration is TTS from a clean generated script, not live dictation,
+  // so there's no real "filler" or dead air to remove in the first place.
   steps.push({ label: "Caption QC", tool: "caption_qc", args: {} });
 
   // Beat-sync pulse on the hook popup, only when there's both music to sync

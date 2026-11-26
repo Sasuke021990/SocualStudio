@@ -1,6 +1,6 @@
 # OpenReel Pipeline Improvements — Design
 
-**Status:** draft, revised after builder-check → awaiting user sign-off → plan → build
+**Status:** approved and implemented (10-task plan executed in full; see §9 for post-hoc reconciliation)
 **Date:** 2026-11-26
 
 ## 1. Why this doc exists
@@ -231,3 +231,79 @@ OpenReel is the user's to run.
 - Output path/filename convention for the dump script is fixed above
   (`docs/openreel-tool-catalog-<date>.json`); builder may add a `--out`
   flag if trivial, not required.
+
+## 9. Implementation reconciliation (added post-hoc, after the 10-task plan shipped)
+
+This section exists because the final whole-branch review found code comments
+pointing at "design doc section 9e" / "9c item 7" that didn't exist — this
+doc ended at §8 when the plan was written. Rather than rewrite those
+comments, this section gives them a real home and reconciles §4's Non-goals
+against what actually got built.
+
+### 9a. §4 Non-goals correction
+
+§4 said: "Not wiring any of the other ~44 'relevant' OpenReel tools from the
+Nov-22 catalog pull — this plan covers the ~9 highest-leverage ones." The
+Phase 2 plan (`docs/superpowers/plans/2026-11-26-openreel-pipeline-improvements.md`,
+written the same day, after this doc was approved) wired roughly 14 tools
+across Tasks 3-10: VFX/transition variety, Ken Burns (`set_clip_keyframes`),
+color grading (`set_color_grading`), the Motion Creator popup chain
+(`create_motion_composition`, `add_motion_layer`, `add_motion_text_animator`,
+`add_motion_text_shader_animator`, `insert_motion_into_editor`), the end-card
+graphic (`list_graphic_templates`, `insert_graphic_template`), word-timed
+captions (`import_captions`), caption QC (`caption_qc`), and beat-sync
+(`sync_motion_to_audio`, `apply_motion_preset_to_beats`). This supersedes the
+"~9" figure — Phase 2 was a deliberate, plan-approved expansion beyond this
+doc's original scope, not scope creep during execution. (`remove_filler_words`
+/ `remove_pauses` were also wired by the plan but removed in the final
+whole-branch review's fix pass — see 9d below.)
+
+### 9b. §7's `create_text_clip` vs. the Motion Creator chain
+
+§7's acceptance criteria assumed kinetic popups would be one `create_text_clip`
+step each. The approved plan instead builds each popup as a 4-step Motion
+Creator chain (composition → layer → animator → insert) wired by `captureAs`
+tokens, because the per-glyph animated/shader text effects this doc's own
+hook-engagement goals call for (§1-3) aren't available on `create_text_clip`
+— only on Motion Creator layers. This is a plan-time design decision, not a
+deviation discovered during coding.
+
+### 9c. Beat-sync scope (item 7 referenced in composer.ts)
+
+Beat-sync (`sync_motion_to_audio` + `apply_motion_preset_to_beats`) targets
+only `kineticPopups[0]` — the hook popup — not every popup independently.
+Multiple independently-pulsing popups is a real future enhancement, left out
+because it multiplies the already-unverified Motion Creator call chain
+without a live connection to test it against.
+
+### 9d. Accepted non-fatal cascades (referenced in composer.ts as "9e")
+
+Several tool chains in this pipeline depend on an earlier step's result id
+(via `captureAs`) that can't be confirmed without a live OpenReel
+connection: the popup composition/layer chain, and the end-card's
+`list_graphic_templates` → `insert_graphic_template` lookup. All of these
+tools are in the executor's non-fatal set, so when a capture fails to
+resolve, the dependent step's call fails too and is logged and skipped
+rather than aborting the whole render — the reel still exports, just without
+that one piece of polish. This is an accepted, deliberate tradeoff: building
+per-step conditional branching ("if this capture fails, skip these N
+dependent steps instead of sending them anyway") would add real executor
+complexity for a failure mode that already degrades gracefully.
+
+The one exception, added in the final whole-branch review: `import_captions`
+is NOT in the non-fatal set, unlike every other guessed-schema tool above.
+Captions are core content (the narration's on-screen text), not creative
+polish — a silently caption-less reel is a worse outcome than an aborted
+render with a clear error, so a bad `content` payload aborts loudly instead.
+
+### 9e. Known remaining limitation: reel duration vs. actual voice length
+
+If the voice clip can't be sped up/slowed down enough (hitting the
+`VOICE_SPEED_MIN`/`MAX` clamp) to fit the target speech window, the actual
+spoken audio can run longer than the reel's nominal `durationSeconds`. The
+final review's fix made captions follow the *actual* post-clamp speech end
+instead of the unclamped target (so captions stay in sync with the audio),
+but it does not solve the deeper issue of the reel itself exceeding `D`
+seconds when the narration is simply too long for the requested duration at
+any allowed speed. That remains an accepted limitation of the speed-fit
+design, not something this branch introduces.

@@ -137,11 +137,16 @@ test("no kineticPopups means no motion-composition steps", () => {
   assert.ok(!steps.some((s) => s.tool === "create_motion_composition"));
 });
 
-test("when spec.cta is set, an insert_graphic_template end-card step replaces the plain CTA subtitle", () => {
+test("when spec.cta is set, the end card's templateId is resolved via list_graphic_templates, not a literal category name (Final review #5: 'end-card' is a list_graphic_templates category filter, not a templateId)", () => {
   const steps = composeReelPlan(specWith({ cta: "Follow for more", durationSeconds: 30 }), assetsWith(), { projectName: "t" });
+  const lookupStep = steps.find((s) => s.tool === "list_graphic_templates");
+  assert.ok(lookupStep, "expected a list_graphic_templates lookup step");
+  assert.equal((lookupStep!.args as { category: string }).category, "end-card");
+  assert.ok(lookupStep!.captureAs, "lookup step must captureAs a token");
   const endCard = steps.find((s) => s.tool === "insert_graphic_template");
   assert.ok(endCard, "expected an insert_graphic_template step");
-  assert.equal((endCard!.args as { templateId: string }).templateId, "end-card");
+  assert.equal((endCard!.args as { templateId: string }).templateId, lookupStep!.captureAs);
+  assert.notEqual((endCard!.args as { templateId: string }).templateId, "end-card");
   assert.equal((endCard!.args as { values: { text?: string } }).values?.text, "Follow for more");
   assert.equal((endCard!.args as { startTime: number }).startTime, 24);
   assert.ok(!steps.some((s) => s.tool === "add_subtitle" && (s.args as { text?: string }).text === "Follow for more"));
@@ -168,10 +173,40 @@ test("caption style includes a highlightColor for the word-by-word pop", () => {
   assert.ok((styleStep.args as { style: { highlightColor?: string } }).style.highlightColor);
 });
 
-test("pacing cleanup steps run, and beat-sync is skipped when there's no music", () => {
+test("word-timed captions follow the actual post-speed-fit voice end, not just the aspirational target (Final review #9)", () => {
+  // target = 15 - 0.5 = 14.5s; naive speed = 30/14.5 = ~2.07, clamped to VOICE_SPEED_MAX 1.5
+  // => actual speech end = 30 / 1.5 = 20s, well past the naive 14.5s target.
+  const steps = composeReelPlan(
+    specWith({ durationSeconds: 15, narration: "This is a very long narration that cannot be sped up enough to fit." }),
+    assetsWith({ voiceSeconds: 30 }),
+    { projectName: "t" },
+  );
+  const importStep = steps.find((s) => s.tool === "import_captions")!;
+  const content = JSON.parse((importStep.args as { content: string }).content);
+  const lastWord = content.segments.at(-1).words.at(-1);
+  assert.ok(Math.abs(lastWord.end - 20) < 0.1, `expected captions to end near 20s (actual post-clamp speech end), got ${lastWord.end}`);
+});
+
+test("popup composition carries the project's frame size, and the layer carries the popup's color/strokeColor/fontSize (Final review #6)", () => {
+  const steps = composeReelPlan(
+    specWith({ kineticPopups: [{ text: "GO", startTime: 1, duration: 1, position: "center", color: "#FFE600", strokeColor: "#111111", fontSize: 88 }] }),
+    assetsWith(),
+    { projectName: "t" },
+  );
+  const compStep = steps.find((s) => s.tool === "create_motion_composition")!;
+  assert.equal((compStep.args as { width: number }).width, 1080);
+  assert.equal((compStep.args as { height: number }).height, 1920);
+  assert.equal((compStep.args as { frameRate: number }).frameRate, 30);
+  const layerStep = steps.find((s) => s.tool === "add_motion_layer")!;
+  assert.equal((layerStep.args as { color: string }).color, "#FFE600");
+  assert.equal((layerStep.args as { strokeColor: string }).strokeColor, "#111111");
+  assert.equal((layerStep.args as { fontSize: number }).fontSize, 88);
+});
+
+test("pacing cleanup keeps the read-only caption_qc but not the ripple-cutting filler/pause removers (Final review #1: they'd desync the already-computed word-timed captions, popups, and CTA against a shortened timeline)", () => {
   const steps = composeReelPlan(specWith(), assetsWith({ musicSeconds: 0 }), { projectName: "t" });
-  assert.ok(steps.some((s) => s.tool === "remove_filler_words"));
-  assert.ok(steps.some((s) => s.tool === "remove_pauses"));
+  assert.ok(!steps.some((s) => s.tool === "remove_filler_words"));
+  assert.ok(!steps.some((s) => s.tool === "remove_pauses"));
   assert.ok(steps.some((s) => s.tool === "caption_qc"));
   assert.ok(!steps.some((s) => s.tool === "sync_motion_to_audio"));
 });
