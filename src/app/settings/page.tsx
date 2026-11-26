@@ -23,7 +23,7 @@ export default function SettingsPage() {
       <div aria-hidden className="hero-grid absolute inset-x-0 top-0 h-[380px]" />
       <PageChrome back={{ href: "/projects", label: "Your Brands" }} />
 
-      <section className="relative mx-auto max-w-3xl px-8 pb-24 pt-12">
+      <section className="relative mx-auto max-w-3xl px-5 sm:px-8 pb-24 pt-12">
         <h1 className="anim-rise text-4xl font-bold tracking-tight" style={{ color: "#fff" }}>Settings</h1>
         <p className="anim-rise anim-rise-1 mt-2" style={{ color: "var(--muted)" }}>
           Everything Social Studio needs to generate content: AI provider, workspace, voice, image generation, and MCP tools.
