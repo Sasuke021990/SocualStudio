@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { PageChrome } from "@/components/nav";
 import { DeleteBrandDialog } from "@/components/DeleteBrandDialog";
+import type { ContentItem } from "@/features/content-dashboard/types";
 
 interface ProjectEntry {
   brainId: string;
@@ -13,15 +14,46 @@ interface ProjectEntry {
   modifiedAt: string;
 }
 
+interface ProjectRow extends ProjectEntry {
+  total: number;
+  approved: number;
+}
+
+function relativeTime(iso: string): string {
+  const deltaMs = Date.now() - new Date(iso).getTime();
+  const deltaSec = Math.max(0, Math.floor(deltaMs / 1000));
+  if (deltaSec < 60) return "just now";
+  const deltaMin = Math.floor(deltaSec / 60);
+  if (deltaMin < 60) return `${deltaMin} minute${deltaMin === 1 ? "" : "s"} ago`;
+  const deltaHr = Math.floor(deltaMin / 60);
+  if (deltaHr < 24) return `${deltaHr} hour${deltaHr === 1 ? "" : "s"} ago`;
+  const deltaDay = Math.floor(deltaHr / 24);
+  if (deltaDay < 30) return `${deltaDay} day${deltaDay === 1 ? "" : "s"} ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
 export default function ProjectsPage() {
-  const [projects, setProjects] = useState<ProjectEntry[]>([]);
+  const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch("/api/brand-brain/projects", { cache: "no-store" });
-      const data = await res.json() as { projects?: ProjectEntry[] };
-      setProjects(data.projects ?? []);
+      const [projRes, itemRes] = await Promise.all([
+        fetch("/api/brand-brain/projects", { cache: "no-store" }),
+        fetch("/api/content-dashboard", { cache: "no-store" }),
+      ]);
+      const projData = await projRes.json() as { projects?: ProjectEntry[] };
+      const itemData = await itemRes.json() as { items?: ContentItem[] };
+      const items = itemData.items ?? [];
+      const rows: ProjectRow[] = (projData.projects ?? []).map((p) => {
+        const mine = items.filter((i) => i.brainId === p.brainId);
+        return {
+          ...p,
+          total: mine.length,
+          approved: mine.filter((i) => i.status === "approved").length,
+        };
+      });
+      setProjects(rows);
     } catch { /* empty */ }
     setLoaded(true);
   }, []);
@@ -114,8 +146,15 @@ export default function ProjectsPage() {
                   </div>
                   <div className="min-w-0">
                     <div className="truncate font-semibold" style={{ color: "#fff" }}>{p.heading}</div>
+                    <div
+                      className="mt-0.5 text-xs"
+                      style={{ color: "var(--muted)" }}
+                      title={new Date(p.modifiedAt).toLocaleString()}
+                    >
+                      Updated {relativeTime(p.modifiedAt)}
+                    </div>
                     <div className="mt-0.5 text-xs" style={{ color: "var(--muted)" }}>
-                      {new Date(p.modifiedAt).toLocaleDateString()}
+                      {p.total} post{p.total === 1 ? "" : "s"} · {p.approved} approved
                     </div>
                   </div>
                   <svg className="ml-auto shrink-0" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--accent-bright)" strokeWidth="1.8" aria-hidden>
