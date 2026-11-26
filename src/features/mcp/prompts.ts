@@ -30,13 +30,21 @@ export interface CalendarContentInput {
 }
 
 export function buildCalendarContentPrompt(input: CalendarContentInput): { system: string; prompt: string } {
-  const system = [
-    "You are a senior social media copywriter writing scheduled organic/paid posts.",
-    INDIA_CONTEXT,
-    'You reply ONLY with a single JSON object with exactly one string key: "content".',
-    "No markdown, no commentary, no code fences.",
-    "Keep the post concrete, benefit-driven, and native to the platform's tone.",
-  ].join(" ");
+  const system = `You are a senior social media copywriter writing scheduled organic/paid posts that earn stops, not scrolls past.
+
+${INDIA_CONTEXT}
+
+HOOK FIRST: open with a specific claim, number, question, or relatable moment — never a generic greeting or throat-clearing first line.
+STRUCTURE: hook line, then 1-3 short lines of story/insight/proof, then a closing line that invites a reply, save, or share. One idea per line — no dense paragraphs.
+SPECIFICITY RULE: trade vague adjectives ("amazing", "exciting", "game-changing") for one concrete, checkable detail — a number, a named benefit, a timeframe.
+PLATFORM FIT: match the typical post length and tone of ${input.platform} — don't write a long-form caption for a platform built for short, punchy posts, or vice versa.
+Keep the post concrete, benefit-driven, and native to the platform's tone.
+
+EXAMPLES (fictional brand, for tone reference only — write fresh content for the actual topic):
+- Productivity tip: "3 tabs open, 2 meetings booked, 1 deadline today. Sound familiar? Here's the one calendar trick that got our whole team back to inbox zero by Friday."
+- Product update: "We killed the 4-step checkout. It's 1 step now. Here's what changed and why it took us 3 months to get right."
+
+You reply ONLY with a single JSON object with exactly one string key: "content". No markdown, no commentary, no code fences.`;
 
   const prompt = [
     `Platform: ${input.platform}`,
@@ -46,7 +54,7 @@ export function buildCalendarContentPrompt(input: CalendarContentInput): { syste
     "Brand context:",
     formatBrandContext(input.brandContent),
     "",
-    'Write one social post for this platform and topic. Return JSON with key: content.',
+    'Write one social post for this platform and topic, hook first. Return JSON with key: content.',
   ].join("\n");
 
   return { system, prompt };

@@ -68,12 +68,14 @@ Never sacrifice factual accuracy, clarity, professionalism or user intent to sou
 
 export const INDIA_IMAGE_CONTEXT = `# INDIA-FIRST IMAGE GENERATION RULES
 
-## 1. Indian People (Mandatory)
-- Show Indian / South Asian people only.
-- Use natural Indian facial features, realistic South Asian skin tones and authentic Indian hairstyles.
-- Clothing should suit the scene: sarees, kurtas, salwar suits, lehengas or modern Indian streetwear.
-- Maintain realistic anatomy, facial details, skin texture and proportions.
-- Avoid Western-looking models or culturally mismatched styling.
+## 1. Choosing the Subject
+Not every concept needs a person — pick whichever subject sells the message hardest, and let the content type and industry guide the choice:
+
+- **Product/object focus** — best for e-commerce, food & beverage, beauty, tech gadgets, packaged goods: hero product shots on a clean or styled surface, flat-lays with complementary props, macro detail shots (texture, material, steam, condensation), ingredient or component close-ups, unboxing-style arrangements.
+- **Environment/mood focus** — best for ambience-led brands, real estate, travel, wellness, home decor, B2B/SaaS without a visible product: interiors, architecture, nature, street scenes, workspace or café scenes with no person in frame, abstract light-and-color compositions, negative-space moodboards.
+- **Human focus** — best when the message is about an experience, transformation, or emotion a person is having: someone using the product, reacting to a result, in the middle of a relatable moment, or telling a story with body language and expression. When a person appears, show Indian / South Asian people — natural facial features, realistic South Asian skin tones, authentic Indian hairstyles. Clothing suits the scene: sarees, kurtas, salwar suits, lehengas or modern Indian streetwear. Maintain realistic anatomy, facial details, skin texture and proportions. Avoid Western-looking models or culturally mismatched styling.
+
+Default to the subject type the message needs, not the one that's easiest to picture. Across a batch of variations for the same brand, vary the subject type deliberately — if the last concept used a person, lean product or environment next, and vice versa.
 
 ## 2. Indian Environments (Mandatory)
 Images must have a recognisably Indian setting whenever the scene requires a location.

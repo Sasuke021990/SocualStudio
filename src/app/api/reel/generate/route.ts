@@ -15,7 +15,7 @@ import { getProviderConfig } from "@/features/ai-provider/store";
 import { getMcpConfig } from "@/features/mcp-client/store";
 import { composeReelPlan } from "@/features/reel/composer";
 import { executeReelPlan, ReelStepError } from "@/features/reel/executor";
-import { voiceSpeedFor, type ReelAssets, type ReelSpec } from "@/features/reel/schemas";
+import { voiceSpeedFor, resolveStoredReelSpec, type ReelAssets, type ReelSpec } from "@/features/reel/schemas";
 import { createReelJob, finishReelJob, type ReelJob } from "@/features/reel/jobs";
 import {
   assertRenderedFileExists,
@@ -75,8 +75,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Approved posts are not editable" }, { status: 403 });
   }
   const variation = item.variation;
-  const spec = variation?.reelSpec as ReelSpec | undefined;
-  if (!spec) return NextResponse.json({ error: "No reel plan — generate a plan first" }, { status: 400 });
+  const spec = resolveStoredReelSpec(variation?.reelSpec);
+  if (!spec) {
+    // Either no plan was ever saved, or it was saved by an older schema
+    // version and no longer validates (e.g. missing a field that's since
+    // become required) — either way, re-planning is the only safe move.
+    // Silently coercing a stale spec here is what used to let composer.ts
+    // crash on `spec.kineticPopups.forEach` with kineticPopups undefined.
+    return NextResponse.json({ error: "No reel plan — generate a plan first" }, { status: 400 });
+  }
 
   const musicFile = audioFileName(parsed.data.sfxUrl ?? variation?.sfxAudio);
   if (!musicFile) {

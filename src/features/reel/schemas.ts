@@ -134,6 +134,27 @@ export const reelSpecSchema = z
 
 export type ReelSpec = z.infer<typeof reelSpecSchema>;
 
+/**
+ * Validate a persisted ReelSpec before it reaches the composer.
+ *
+ * Posts can carry a `variation.reelSpec` blob saved by an older version of
+ * the schema (e.g. before `kineticPopups` existed). Casting that blob
+ * straight to `ReelSpec` (`as ReelSpec`) is a compile-time-only guarantee —
+ * at runtime the field is simply `undefined`, and composer.ts's
+ * `spec.kineticPopups.forEach(...)` throws "Cannot read properties of
+ * undefined (reading 'forEach')". Re-running the stored value through the
+ * schema applies every `.default(...)` (kineticPopups, format, audio,
+ * captions) so the composer always receives a fully-populated spec.
+ * Returns null — never throws — when the stored value is missing or no
+ * longer satisfies the schema's required fields, so the caller can ask for
+ * a fresh plan instead of crashing.
+ */
+export function resolveStoredReelSpec(raw: unknown): ReelSpec | null {
+  if (raw === undefined || raw === null) return null;
+  const parsed = reelSpecSchema.safeParse(raw);
+  return parsed.success ? parsed.data : null;
+}
+
 /** Everything the composer needs besides the spec: staged files + measurements. */
 export interface ReelAssets {
   /** Absolute paths inside OpenReel's allowed roots (staged by the executor). */
