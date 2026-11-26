@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { PageChrome } from "@/components/nav";
 import { StatCard } from "@/components/content-widgets";
+import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import type { ContentItem } from "@/features/content-dashboard/types";
 
 interface ProjectEntry {
@@ -111,11 +112,14 @@ export default function DashboardPage() {
             {[0, 1, 2].map((i) => <div key={i} className="glass h-36 animate-pulse" />)}
           </div>
         ) : brands.length === 0 ? (
-          <div className="glass-hero mt-6 flex flex-col items-center gap-5 py-16 text-center">
-            <p className="text-lg font-semibold" style={{ color: "#fff" }}>No brands yet</p>
-            <p className="text-sm" style={{ color: "var(--muted)" }}>Create a brand and its content will show up here.</p>
-            <Link href="/projects/new" className="btn-primary">Create Your First Brand</Link>
-          </div>
+          <>
+            <div className="glass-hero mt-6 flex flex-col items-center gap-5 py-16 text-center">
+              <p className="text-lg font-semibold" style={{ color: "#fff" }}>No brands yet</p>
+              <p className="text-sm" style={{ color: "var(--muted)" }}>Create a brand and its content will show up here.</p>
+              <Link href="/projects/new" className="btn-primary">Create Your First Brand</Link>
+            </div>
+            <OnboardingChecklist brandCount={brands.length} postCount={totals.total} approvedCount={totals.approved} />
+          </>
         ) : (
           <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {brands.map((b, i) => (
