@@ -1,8 +1,20 @@
 import type { McpServerConfig } from "@/features/mcp-client/types";
-import { withMcpConnection } from "@/features/mcp-client/client";
+import { withMcpConnection, type McpConnection } from "@/features/mcp-client/client";
 import type { ReelToolStep } from "./composer";
 
 const ERROR_CODES = /\((INVALID_PARAMS|TOOL_ERROR|OUTSIDE_ALLOWED_ROOTS|NOT_FOUND|UNSUPPORTED)\b/;
+
+/**
+ * Tools whose failure is creative polish, not a broken render: log and move
+ * on instead of aborting the whole plan. Each new composition/graphic/audio
+ * step added for the "attractive reel" pipeline belongs here too — see
+ * docs/superpowers/plans/2026-11-26-openreel-pipeline-improvements.md.
+ */
+const NON_FATAL_TOOLS = new Set<string>([
+  "add_transition",
+  "add_video_effect",
+  "set_clip_transform",
+]);
 
 export class ReelStepError extends Error {
   constructor(readonly stepLabel: string, message: string) {
@@ -42,76 +54,84 @@ function substitute(value: unknown, map: Map<string, string>): unknown {
 }
 
 /**
- * Execute a composed plan against the OpenReel server.
+ * Run a composed plan's steps against an already-connected OpenReel server.
+ * Exported (separately from `executeReelPlan`) so it's testable with a fake
+ * `McpConnection`, without going through the real `withMcpConnection` pool.
  * Ids are resolved from step results (OpenReel returns `{actionId}`; created
- * tracks/clips are addressed as `track-<actionId>-0` / `<actionId>-0`).
+ * tracks/clips are addressed as `track-<actionId>-0` / `<actionId>-0`; any
+ * step with `captureAs` stores its returned id under that token instead).
  */
-export async function executeReelPlan(server: McpServerConfig, steps: ReelToolStep[]): Promise<string> {
-  return withMcpConnection(server, async (conn) => {
-    const map = new Map<string, string>();
-    const dims = new Map<string, { w: number; h: number }>();
-    let exportText = "";
+export async function runSteps(conn: McpConnection, steps: ReelToolStep[]): Promise<string> {
+  const map = new Map<string, string>();
+  const dims = new Map<string, { w: number; h: number }>();
+  let exportText = "";
 
-    for (const step of steps) {
-      if (step.tool === "noop") continue;
+  for (const step of steps) {
+    if (step.tool === "noop") continue;
 
-      const args = substitute(step.args, map) as Record<string, unknown>;
-      const text = await conn.callTool(step.tool, args);
+    const args = substitute(step.args, map) as Record<string, unknown>;
+    const text = await conn.callTool(step.tool, args);
 
-      if (ERROR_CODES.test(text)) {
-        // Creative polish steps (transitions / VFX) should never abort the whole render if parameters miss
-        if (step.tool === "add_transition" || step.tool === "add_video_effect" || step.tool === "set_clip_transform") {
-          console.warn(`[reel] non-fatal creative step warning (${step.label}):`, text.slice(0, 300));
-          continue;
-        }
-        throw new ReelStepError(step.label, text.slice(0, 400));
+    if (ERROR_CODES.test(text)) {
+      // Creative polish steps (transitions / VFX / motion graphics / etc.)
+      // should never abort the whole render if parameters miss.
+      if (NON_FATAL_TOOLS.has(step.tool)) {
+        console.warn(`[reel] non-fatal creative step warning (${step.label}):`, text.slice(0, 300));
+        continue;
       }
+      throw new ReelStepError(step.label, text.slice(0, 400));
+    }
 
-      const parsed = jsonOf(text) as { imported?: Array<{ mediaId: string; width?: number; height?: number }> } | null;
-      if (step.resolve?.includes("media") && parsed?.imported && step.mediaNames) {
-        // Order matches the import `paths`
-        parsed.imported.forEach((m, i) => {
-          const name = step.mediaNames![i];
-          if (!name) return;
-          map.set(`__media:${name}__`, m.mediaId);
-          if (m.width && m.height) dims.set(name, { w: m.width, h: m.height });
-        });
+    const parsed = jsonOf(text) as { imported?: Array<{ mediaId: string; width?: number; height?: number }> } | null;
+    if (step.resolve?.includes("media") && parsed?.imported && step.mediaNames) {
+      // Order matches the import `paths`
+      parsed.imported.forEach((m, i) => {
+        const name = step.mediaNames![i];
+        if (!name) return;
+        map.set(`__media:${name}__`, m.mediaId);
+        if (m.width && m.height) dims.set(name, { w: m.width, h: m.height });
+      });
+    }
+
+    const id = actionId(text);
+    if (id) {
+      if (step.captureAs) map.set(step.captureAs, id);
+      if (step.tool === "add_track") {
+        if (!map.has("__videoTrack__")) map.set("__videoTrack__", `track-${id}-0`);
+        else if (!map.has("__audioTrack1__")) map.set("__audioTrack1__", `track-${id}-0`);
+        else map.set("__audioTrack2__", `track-${id}-0`);
       }
-
-      const id = actionId(text);
-      if (id) {
-        if (step.tool === "add_track") {
-          if (!map.has("__videoTrack__")) map.set("__videoTrack__", `track-${id}-0`);
-          else if (!map.has("__audioTrack1__")) map.set("__audioTrack1__", `track-${id}-0`);
-          else map.set("__audioTrack2__", `track-${id}-0`);
-        }
-        if (step.tool === "add_clip" && step.clipName) {
-          const clipId = `${id}-0`;
-          map.set(`__clip:${step.clipName}__`, clipId);
-          // Cover-scale off-aspect media (e.g. a reused 1:1 image) so it fills
-          // the 9:16 frame instead of floating in black bars.
-          const d = dims.get(step.clipName);
-          if (step.clipName.startsWith("img") && d) {
-            const mediaAspect = d.w / d.h;
-            const frameAspect = 9 / 16;
-            const ratio = Math.max(mediaAspect, frameAspect) / Math.min(mediaAspect, frameAspect);
-            if (ratio > 1.02) {
-              // fitMode cover: fill the 9:16 frame, crop the overflow (no scale math).
-              const trText = await conn.callTool("set_clip_transform", {
-                clipId,
-                transform: { fitMode: "cover" },
-              });
-              if (ERROR_CODES.test(trText)) {
-                console.warn(`[reel] cover-fit failed for ${step.clipName}:`, trText.slice(0, 200));
-              }
+      if (step.tool === "add_clip" && step.clipName) {
+        const clipId = `${id}-0`;
+        map.set(`__clip:${step.clipName}__`, clipId);
+        // Cover-scale off-aspect media (e.g. a reused 1:1 image) so it fills
+        // the 9:16 frame instead of floating in black bars.
+        const d = dims.get(step.clipName);
+        if (step.clipName.startsWith("img") && d) {
+          const mediaAspect = d.w / d.h;
+          const frameAspect = 9 / 16;
+          const ratio = Math.max(mediaAspect, frameAspect) / Math.min(mediaAspect, frameAspect);
+          if (ratio > 1.02) {
+            // fitMode cover: fill the 9:16 frame, crop the overflow (no scale math).
+            const trText = await conn.callTool("set_clip_transform", {
+              clipId,
+              transform: { fitMode: "cover" },
+            });
+            if (ERROR_CODES.test(trText)) {
+              console.warn(`[reel] cover-fit failed for ${step.clipName}:`, trText.slice(0, 200));
             }
           }
         }
       }
-
-      if (step.tool === "export_video") exportText = text;
     }
 
-    return exportText;
-  });
+    if (step.tool === "export_video") exportText = text;
+  }
+
+  return exportText;
+}
+
+/** Execute a composed plan against the OpenReel server (borrows a pooled connection). */
+export async function executeReelPlan(server: McpServerConfig, steps: ReelToolStep[]): Promise<string> {
+  return withMcpConnection(server, (conn) => runSteps(conn, steps));
 }

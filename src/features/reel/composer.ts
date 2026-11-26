@@ -23,6 +23,8 @@ export interface ReelToolStep {
   mediaNames?: string[];
   /** For `add_clip` steps: logical name of the placed media (clip id key). */
   clipName?: string;
+  /** Store this step's returned actionId/id under this token for later substitution. */
+  captureAs?: string;
 }
 
 const VIDEO_TRACK = "__videoTrack__";
