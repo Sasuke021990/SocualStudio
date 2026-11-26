@@ -50,7 +50,7 @@ export interface PlanReelInput {
   /** User's creative direction from the "15-sec reel prompt" field. */
   reelPrompt: string;
   durationSeconds: 15 | 30;
-  imageCount: 1 | 2 | 3;
+  imageCount: number;
   style?: ReelStyle;
 }
 

@@ -18,6 +18,7 @@ import { executeReelPlan, ReelStepError } from "@/features/reel/executor";
 import { voiceSpeedFor, type ReelAssets, type ReelSpec } from "@/features/reel/schemas";
 import { createReelJob, finishReelJob, type ReelJob } from "@/features/reel/jobs";
 import {
+  assertRenderedFileExists,
   copyIntoReelDir,
   copyReelToExport,
   downloadIntoReelDir,
@@ -209,6 +210,9 @@ async function runReelJob(job: ReelJob, deps: RunDeps): Promise<void> {
 
     job.phase = `Rendering ${spec.durationSeconds}s reel…`;
     await executeReelPlan(openreel, steps);
+
+    job.phase = "Verifying export…";
+    await assertRenderedFileExists(assets.outputPath);
 
     job.phase = "Exporting…";
     await copyReelToExport(itemId, assets.outputPath);

@@ -229,3 +229,28 @@ test("beat-sync pulses the first kinetic popup's layer when both music and a pop
   assert.equal((beatStep!.args as { compositionId: string }).compositionId, "__composition:popup0__");
   assert.equal((beatStep!.args as { layerId: string }).layerId, "__layer:popup0__");
 });
+
+test("cinematic style uses the new soft-grade preset (crossfade/dipToBlack/zoom, tilt-shift/lens-flare/exposure)", () => {
+  const d = directivesForStyle("cinematic", 5);
+  assert.deepEqual(d.transitions.map((t) => t.type), ["crossfade", "dipToBlack", "zoom"]);
+  assert.deepEqual(d.effects.map((e) => e.type), ["tilt-shift", "lens-flare", "exposure"]);
+  assert.equal(d.popupAnimator.presetOrShaderId, "text-reveal-up");
+});
+
+test("a spec with style \"cinematic\" (pre-existing saved content) still composes a full step plan", () => {
+  const steps = composeReelPlan(specWith({ style: "cinematic", imageCount: 2 }), assetsWith(), { projectName: "t" });
+  assert.ok(steps.some((s) => s.tool === "export_video"));
+});
+
+test("tech-explainer style uses the new Modern Social preset (push/radialWipe/circleReveal, vibrance/glow)", () => {
+  const d = directivesForStyle("tech-explainer", 5);
+  assert.deepEqual(d.transitions.map((t) => t.type), ["push", "radialWipe", "circleReveal"]);
+  assert.deepEqual(d.effects.map((e) => e.type), ["vibrance", "glow"]);
+  assert.equal(d.popupAnimator.tool, "add_motion_text_shader_animator");
+  assert.equal(d.popupAnimator.presetOrShaderId, "glyph-glow-wave");
+});
+
+test("a spec with style \"tech-explainer\" (pre-existing saved content) still composes a full step plan", () => {
+  const steps = composeReelPlan(specWith({ style: "tech-explainer", imageCount: 2 }), assetsWith(), { projectName: "t" });
+  assert.ok(steps.some((s) => s.tool === "export_video"));
+});

@@ -51,15 +51,16 @@ export function directivesForStyle(style: ReelStyle, slice: number): StyleDirect
     case "cinematic":
       return {
         transitions: [
-          { type: "filmBurn", duration: transDuration },
-          { type: "zoom", duration: transDuration },
+          { type: "crossfade", duration: transDuration },
           { type: "dipToBlack", duration: transDuration },
+          { type: "zoom", duration: transDuration },
         ],
         effects: [
-          { type: "vignette", params: {} },
-          { type: "glow", params: {} },
+          { type: "tilt-shift", params: {} },
+          { type: "lens-flare", params: {} },
+          { type: "exposure", params: {} },
         ],
-        colorGrade: { temp: -8, tint: 2, hsl: { saturation: -5 }, wheels: { shadows: { lift: -0.04 } } },
+        colorGrade: { temp: -6, tint: 1, hsl: { saturation: -8 } },
         popupAnimator: { tool: "add_motion_text_animator", presetOrShaderId: "text-reveal-up" },
       };
     case "tech-explainer":
@@ -67,13 +68,14 @@ export function directivesForStyle(style: ReelStyle, slice: number): StyleDirect
         transitions: [
           { type: "push", duration: transDuration },
           { type: "radialWipe", duration: transDuration },
-          { type: "blinds", duration: transDuration },
+          { type: "circleReveal", duration: transDuration },
         ],
         effects: [
-          { type: "halftone", params: {} },
+          { type: "vibrance", params: {} },
+          { type: "glow", params: {} },
         ],
-        colorGrade: { temp: -4, tint: 0, hsl: { saturation: -10 } },
-        popupAnimator: { tool: "add_motion_text_shader_animator", presetOrShaderId: "scanline-materialize" },
+        colorGrade: { temp: 3, tint: -1, hsl: { saturation: 10 } },
+        popupAnimator: { tool: "add_motion_text_shader_animator", presetOrShaderId: "glyph-glow-wave" },
       };
     case "minimalist":
       return {

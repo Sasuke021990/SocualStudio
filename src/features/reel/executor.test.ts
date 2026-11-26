@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { runSteps } from "./executor";
+import { runSteps, ReelStepError } from "./executor";
 import type { ReelToolStep } from "./composer";
 
 function fakeConn(responses: Record<string, string | string[]>) {
@@ -151,4 +151,54 @@ test("import_captions is fatal, not non-fatal: captions are core content, not cr
   });
   const steps: ReelToolStep[] = [{ label: "caps", tool: "import_captions", args: {} }];
   await assert.rejects(() => runSteps(conn, steps));
+});
+
+test("a thrown error (e.g. MCP isError) from a FATAL tool call is wrapped as ReelStepError carrying the step label (review fix)", async () => {
+  const conn = {
+    async callTool(name: string) {
+      if (name === "create_text_clip") throw new Error("(TOOL_ERROR) nope");
+      return "{}";
+    },
+    async listTools() {
+      return [];
+    },
+    async close() {},
+  };
+  const steps: ReelToolStep[] = [{ label: "Hook text clip", tool: "create_text_clip", args: {} }];
+  await assert.rejects(() => runSteps(conn, steps), (err: unknown) => {
+    assert.ok(err instanceof ReelStepError);
+    assert.equal(err.stepLabel, "Hook text clip");
+    assert.match(err.message, /TOOL_ERROR/);
+    return true;
+  });
+});
+
+test("the inline cover-fit transform for an off-aspect image is caught and logged, not propagated (review fix)", async (t) => {
+  const warnings: string[] = [];
+  t.mock.method(console, "warn", (...args: unknown[]) => {
+    warnings.push(String(args[0]));
+  });
+  const conn = {
+    async callTool(name: string) {
+      if (name === "import_media_from_path") {
+        return JSON.stringify({ imported: [{ mediaId: "m1", width: 1000, height: 1000 }] });
+      }
+      if (name === "add_clip") return '{"actionId": "clip-1"}';
+      if (name === "set_clip_transform") throw new Error("MCP tool call returned isError with no message");
+      if (name === "export_video") return '{"path": "/out.mp4"}';
+      return "{}";
+    },
+    async listTools() {
+      return [];
+    },
+    async close() {},
+  };
+  const steps: ReelToolStep[] = [
+    { label: "Import media", tool: "import_media_from_path", args: {}, resolve: ["media"], mediaNames: ["img0"] },
+    { label: "Place image", tool: "add_clip", args: {}, clipName: "img0" },
+    { label: "Export", tool: "export_video", args: {} },
+  ];
+  const result = await runSteps(conn, steps);
+  assert.ok(warnings.some((w) => w.includes("img0") || w.includes("cover-fit")));
+  assert.equal(result, '{"path": "/out.mp4"}');
 });

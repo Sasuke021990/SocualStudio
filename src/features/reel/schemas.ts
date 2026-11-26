@@ -4,6 +4,20 @@ import { cleanCaption } from "@/features/prompts/clean";
 export const reelStyleSchema = z.enum(["high-energy", "cinematic", "tech-explainer", "minimalist"]);
 export type ReelStyle = z.infer<typeof reelStyleSchema>;
 
+/**
+ * Request body for POST /api/reel/plan. Kept here (not in route.ts) so it can
+ * be unit-tested directly: importing route.ts drags in next/server, which
+ * this repo's lightweight node:test loader cannot resolve.
+ */
+export const planRequestSchema = z.object({
+  itemId: z.string().min(1),
+  prompt: z.string().min(1, "Reel prompt required").max(500),
+  durationSeconds: z.union([z.literal(15), z.literal(30)]),
+  /** 1-10, matching reelSpecSchema; the UI itself gates new plans to 3-10. */
+  imageCount: z.number().int().min(1).max(10),
+  style: reelStyleSchema.optional(),
+});
+
 export const kineticPopupSchema = z.object({
   text: z.string().min(1).max(30),
   startTime: z.number().min(0),
@@ -67,8 +81,8 @@ export const reelSpecSchema = z
     durationSeconds: z.union([z.literal(15), z.literal(30)]),
     /** Visual pacing style */
     style: reelStyleSchema.default("high-energy"),
-    /** How many storyboard images to generate and use (1–3). */
-    imageCount: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    /** How many storyboard images to generate and use (1–10; the UI gates new plans to 3–10). */
+    imageCount: z.number().int().min(1).max(10),
     /** Spoken narration — also the on-screen captions. Auto-sanitized to strip emojis/hashtags. */
     narration: z
       .string()
@@ -76,7 +90,7 @@ export const reelSpecSchema = z
       .max(1000)
       .transform((s) => cleanCaption(s).caption),
     /** One visual brief per image, following the narration beats. */
-    imageBriefs: z.array(z.string().min(5).max(500)).min(1).max(3),
+    imageBriefs: z.array(z.string().min(5).max(500)).min(1).max(10),
     /** MrBeast-style punchy kinetic word popups for the hook. */
     kineticPopups: z.array(kineticPopupSchema).default([]),
     /** Optional end-card text (shown in the last 20% of the reel). */

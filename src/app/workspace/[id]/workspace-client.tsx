@@ -69,9 +69,9 @@ export default function WorkspaceClient() {
   const [planAccepted, setPlanAccepted] = useState(false);
   const [reelError, setReelError] = useState<string | null>(null);
   const [reelDuration, setReelDuration] = useState<15 | 30>(15);
-  const [reelStyle, setReelStyle] = useState<ReelStyle>("high-energy");
+  const [reelStyle, setReelStyle] = useState<ReelStyle>("tech-explainer");
   const [showImagePopup, setShowImagePopup] = useState(false);
-  const [imageCountPick, setImageCountPick] = useState<1 | 2 | 3>(3);
+  const [imageCountPick, setImageCountPick] = useState<number>(3);
   const [showGenModal, setShowGenModal] = useState(false);
   const [reelPhase, setReelPhase] = useState("");
   const [reelMeta, setReelMeta] = useState<{ videoFile: string; imageFiles: string[]; createdAt: string } | null>(null);
@@ -160,7 +160,7 @@ export default function WorkspaceClient() {
 
   // ── Reel ─────────────────────────────────────────────────────────────
 
-  const generatePlan = async (imageCount: 1 | 2 | 3) => {
+  const generatePlan = async (imageCount: number) => {
     setShowImagePopup(false);
     setPlanState("planning");
     setReelError(null);
@@ -587,10 +587,10 @@ export default function WorkspaceClient() {
                   onChange={(e) => setReelStyle(e.target.value as ReelStyle)}
                   aria-label="Select reel style"
                 >
+                  <option value="tech-explainer">Modern Social (Punchy, Clean)</option>
+                  <option value="cinematic">Cinematic (Warm, Soft Grade)</option>
+                  <option value="minimalist">Clean Editorial (Soft Crossfade)</option>
                   <option value="high-energy">High Energy (Viral / Hype)</option>
-                  <option value="cinematic">Cinematic (Film Burn / Glow)</option>
-                  <option value="tech-explainer">Tech Explainer (Clean Cuts)</option>
-                  <option value="minimalist">Minimalist (Soft Crossfade)</option>
                 </select>
               </div>
             </div>
@@ -828,10 +828,10 @@ export default function WorkspaceClient() {
           >
             <h3 className="text-base font-semibold" style={{ color: "#fff" }}>How many images?</h3>
             <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
-              Generated fresh for the reel — one visual per story beat. You can pick 1 to 3.
+              Generated fresh for the reel — one visual per story beat. You can pick 3 to 10.
             </p>
-            <div className="mt-4 flex gap-2">
-              {([1, 2, 3] as const).map((n) => (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {([3, 4, 5, 6, 7, 8, 9, 10] as const).map((n) => (
                 <button
                   key={n}
                   type="button"
