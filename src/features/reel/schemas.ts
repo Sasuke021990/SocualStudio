@@ -4,6 +4,20 @@ import { cleanCaption } from "@/features/prompts/clean";
 export const reelStyleSchema = z.enum(["high-energy", "cinematic", "tech-explainer", "minimalist"]);
 export type ReelStyle = z.infer<typeof reelStyleSchema>;
 
+/**
+ * Request body for POST /api/reel/plan. Kept here (not in route.ts) so it can
+ * be unit-tested directly: importing route.ts drags in next/server, which
+ * this repo's lightweight node:test loader cannot resolve.
+ */
+export const planRequestSchema = z.object({
+  itemId: z.string().min(1),
+  prompt: z.string().min(1, "Reel prompt required").max(500),
+  durationSeconds: z.union([z.literal(15), z.literal(30)]),
+  /** 1-10, matching reelSpecSchema; the UI itself gates new plans to 3-10. */
+  imageCount: z.number().int().min(1).max(10),
+  style: reelStyleSchema.optional(),
+});
+
 export const kineticPopupSchema = z.object({
   text: z.string().min(1).max(30),
   startTime: z.number().min(0),

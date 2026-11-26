@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { reelSpecSchema } from "./schemas";
+import { planRequestSchema, reelSpecSchema } from "./schemas";
 
 function baseSpec(overrides: Record<string, unknown> = {}) {
   return {
@@ -33,4 +33,30 @@ test("rejects imageCount 11", () => {
 
 test("rejects imageCount 0", () => {
   assert.throws(() => reelSpecSchema.parse(baseSpec({ imageCount: 0, imageBriefs: [] })));
+});
+
+function basePlanRequest(overrides: Record<string, unknown> = {}) {
+  return {
+    itemId: "item-1",
+    prompt: "A quick product demo",
+    durationSeconds: 15,
+    imageCount: 3,
+    ...overrides,
+  };
+}
+
+test("planRequestSchema accepts imageCount up to 10 (the new picker range)", () => {
+  const parsed = planRequestSchema.parse(basePlanRequest({ imageCount: 10 }));
+  assert.equal(parsed.imageCount, 10);
+});
+
+test("planRequestSchema accepts imageCount 4 through 9 (previously rejected by the 1|2|3 union)", () => {
+  for (const n of [4, 5, 6, 7, 8, 9]) {
+    const parsed = planRequestSchema.parse(basePlanRequest({ imageCount: n }));
+    assert.equal(parsed.imageCount, n);
+  }
+});
+
+test("planRequestSchema rejects imageCount 11", () => {
+  assert.throws(() => planRequestSchema.parse(basePlanRequest({ imageCount: 11 })));
 });
