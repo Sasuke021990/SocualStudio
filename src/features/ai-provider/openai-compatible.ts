@@ -37,29 +37,38 @@ function buildResponseFormats<T>(schema: ZodType<T>): ResponseFormat[] {
   return formats;
 }
 
+/** Strip reasoning blocks, inline comments, and trailing commas before JSON.parse. */
+function cleanJsonText(raw: string): string {
+  return raw
+    .replace(/<think>[\s\S]*?<\/think>/gi, "")
+    .replace(/(?<!:)\/\/.*$/gm, "")
+    .replace(/,\s*([}\]])/g, "$1")
+    .trim();
+}
+
 /** Parse model output that may be wrapped in code fences or prose. */
 function parseJsonObject(raw: string): unknown {
-  const trimmed = raw.trim();
+  const cleaned = cleanJsonText(raw);
   try {
-    return JSON.parse(trimmed);
+    return JSON.parse(cleaned);
   } catch {
     // Fall through to fence/brace extraction.
   }
-  const fenced = /```(?:json)?\s*([\s\S]*?)```/.exec(trimmed);
+  const fenced = /```(?:json)?\s*([\s\S]*?)```/.exec(cleaned);
   if (fenced?.[1]) {
-    return JSON.parse(fenced[1].trim());
+    return JSON.parse(cleanJsonText(fenced[1]));
   }
-  const start = trimmed.indexOf("{");
-  const end = trimmed.lastIndexOf("}");
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
   if (start >= 0 && end > start) {
-    return JSON.parse(trimmed.slice(start, end + 1));
+    return JSON.parse(cleanJsonText(cleaned.slice(start, end + 1)));
   }
   throw new Error("AI provider returned non-JSON output.");
 }
 
 function isResponseFormatError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
-  return /response_format/i.test(message);
+  return /response_format|json_schema|400|bad request/i.test(message);
 }
 
 function defaultApiKey(): string {

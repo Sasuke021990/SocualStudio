@@ -1,8 +1,37 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { removeReelDir } from "@/features/reel/assets";
-import { listContentItems, createContentItem, getContentStats, updateContentItem, updateContentItemStatus, deleteContentItem } from "@/features/content-dashboard/store";
+import {
+  listContentItems,
+  createContentItem,
+  createManyContentItems,
+  getContentStats,
+  updateContentItem,
+  updateContentItemStatus,
+  deleteContentItem,
+} from "@/features/content-dashboard/store";
 import { CONTENT_STATUSES, CONTENT_TYPES } from "@/features/content-dashboard/types";
+
+const variationPayloadSchema = z.object({
+  imageConcept: z
+    .record(z.string(), z.unknown())
+    .default({})
+    .transform((obj) =>
+      Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, typeof v === "string" ? v : String(v ?? "")])),
+    ),
+  soundPrompt: z.string().default(""),
+  caption: z.string().default(""),
+  hashtags: z
+    .array(z.unknown())
+    .transform((arr) =>
+      arr.filter((item): item is string => typeof item === "string" && item.trim().length > 0),
+    )
+    .default([]),
+  cta: z.string().default(""),
+  generatedImage: z.string().nullable().optional(),
+  voiceAudio: z.string().nullable().optional(),
+  sfxAudio: z.string().nullable().optional(),
+});
 
 const createSchema = z.object({
   brandName: z.string().min(1),
@@ -12,16 +41,11 @@ const createSchema = z.object({
   prompt: z.string().min(1),
   output: z.string().min(1),
   platform: z.string().min(1),
-  variation: z.object({
-    imageConcept: z.record(z.string(), z.string()),
-    soundPrompt: z.string(),
-    caption: z.string(),
-    hashtags: z.array(z.string()),
-    cta: z.string(),
-    generatedImage: z.string().nullable().optional(),
-    voiceAudio: z.string().nullable().optional(),
-    sfxAudio: z.string().nullable().optional(),
-  }).optional(),
+  variation: variationPayloadSchema.optional(),
+});
+
+const batchSchema = z.object({
+  items: z.array(createSchema).min(1),
 });
 
 export async function GET(request: Request) {
@@ -41,6 +65,12 @@ export async function POST(request: Request) {
     body = raw ? JSON.parse(raw) : null;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const batchParsed = batchSchema.safeParse(body);
+  if (batchParsed.success) {
+    const items = await createManyContentItems(batchParsed.data.items);
+    return NextResponse.json({ items, count: items.length }, { status: 201 });
   }
 
   const parsed = createSchema.safeParse(body);

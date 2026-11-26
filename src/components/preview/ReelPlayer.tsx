@@ -53,6 +53,10 @@ export function ReelPlayer({
     };
   }, []);
 
+  useEffect(() => {
+    videoRef.current?.load();
+  }, [src]);
+
   const togglePlay = () => {
     const video = videoRef.current;
     if (!video) return;

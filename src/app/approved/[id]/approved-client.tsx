@@ -152,11 +152,11 @@ export default function ApprovedClient() {
           </div>
         </aside>
 
-        {/* MAIN: post preview */}
+        {/* MAIN: post preview — always housed in MobileDeviceFrame */}
         <section className="mx-auto flex w-full justify-center" style={{ maxWidth: 420 }}>
-          {cardView === "reel" && v?.reel ? (
-            <MobileDeviceFrame
-              viewToggle={
+          <MobileDeviceFrame
+            viewToggle={
+              v?.reel ? (
                 <div className="flex gap-1 rounded-full bg-black/60 p-0.5 backdrop-blur-md ring-1 ring-white/10">
                   {(["image", "reel"] as const).map((mode) => (
                     <button
@@ -172,88 +172,73 @@ export default function ApprovedClient() {
                     </button>
                   ))}
                 </div>
-              }
-            >
+              ) : undefined
+            }
+          >
+            {cardView === "reel" && v?.reel ? (
               <ReelPlayer
-                src={`/api/reel/file?item=${current.id}`}
+                src={`/api/reel/file?item=${current.id}&v=${encodeURIComponent(v.reel.createdAt)}`}
                 brandName={current.brandName}
                 handle={handle}
                 caption={v?.caption ?? current.title}
                 hashtags={v?.hashtags ?? []}
               />
-            </MobileDeviceFrame>
-          ) : (
-            <div className="w-full overflow-hidden rounded-2xl border-2 border-zinc-200 dark:border-zinc-700" style={{ background: "#fff" }}>
-              <div className="flex items-center gap-2.5 px-3.5 py-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: "linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" }}>
-                  {current.brandName.charAt(0).toUpperCase()}
+            ) : (
+              <div className="h-full w-full overflow-y-auto bg-white pt-8 pb-6">
+                <div className="flex items-center gap-2.5 px-3.5 py-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: "linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" }}>
+                    {current.brandName.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="text-[13px] font-semibold" style={{ color: "#262626" }}>{handle}</div>
                 </div>
-                <div className="text-[13px] font-semibold" style={{ color: "#262626" }}>{handle}</div>
-              </div>
 
-              <div className="relative flex aspect-square items-center justify-center overflow-hidden" style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}>
-                {v?.reel && (
-                  <div className="absolute left-3 top-3 z-20 flex gap-1.5">
-                    {(["image", "reel"] as const).map((mode) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        aria-pressed={cardView === mode}
-                        onClick={() => setCardView(mode)}
-                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize backdrop-blur-sm transition ${
-                          cardView === mode ? "bg-white text-zinc-800" : "bg-black/50 text-white hover:bg-black/70"
-                        }`}
-                      >
-                        {mode}
-                      </button>
+                <div className="relative flex aspect-square items-center justify-center overflow-hidden" style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}>
+                  {v?.generatedImage ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={v.generatedImage} alt={current.title} className="absolute inset-0 h-full w-full object-cover" />
+                  ) : (
+                    <div className="relative z-10 px-6 text-center text-white">
+                      <IconImage size={40} className="text-white/90" />
+                      <p className="mt-2 text-xs opacity-80">{current.title}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3 px-3.5 py-2.5">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8" className="ml-auto"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
+
+                <div className="px-3.5 pb-2">
+                  <p className="text-[13px] leading-[18px]" style={{ color: "#262626" }}>
+                    <span className="font-semibold">{handle}</span> {v?.caption ?? current.title}
+                  </p>
+                </div>
+                {v?.hashtags && v.hashtags.length > 0 && (
+                  <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 px-3.5 pb-2">
+                    {v.hashtags.map((tag, i) => (
+                      <span key={i} className="text-[12px]" style={{ color: "#00376b" }}>#{tag}</span>
                     ))}
                   </div>
                 )}
-                {v?.generatedImage ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={v.generatedImage} alt={current.title} className="absolute inset-0 h-full w-full object-cover" />
-                ) : (
-                  <div className="relative z-10 px-6 text-center text-white">
-                    <IconImage size={40} className="text-white/90" />
-                    <p className="mt-2 text-xs opacity-80">{current.title}</p>
+                {v?.cta && (
+                  <div className="px-3.5 pb-3">
+                    <div className="w-full rounded-lg py-2 text-center text-[13px] font-semibold text-white" style={{ background: "linear-gradient(135deg, #8b5cf6, #d946ef)" }}>
+                      {v.cta}
+                    </div>
+                  </div>
+                )}
+                {(v?.voiceAudio || v?.sfxAudio) && (
+                  <div className="border-t border-zinc-100 px-3.5 py-2 space-y-1.5">
+                    {v.voiceAudio && <audio controls src={v.voiceAudio} className="h-8 w-full" preload="none" onPlay={(e) => exclusivePlay(e.currentTarget)} />}
+                    {v.sfxAudio && <audio controls src={v.sfxAudio} className="h-8 w-full" preload="none" onPlay={(e) => exclusivePlay(e.currentTarget)} />}
                   </div>
                 )}
               </div>
-
-            <div className="flex items-center gap-3 px-3.5 py-2.5">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8" className="ml-auto"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </div>
-
-            <div className="px-3.5 pb-2">
-              <p className="text-[13px] leading-[18px]" style={{ color: "#262626" }}>
-                <span className="font-semibold">{handle}</span> {v?.caption ?? current.title}
-              </p>
-            </div>
-            {v?.hashtags && v.hashtags.length > 0 && (
-              <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 px-3.5 pb-2">
-                {v.hashtags.map((tag, i) => (
-                  <span key={i} className="text-[12px]" style={{ color: "#00376b" }}>#{tag}</span>
-                ))}
-              </div>
             )}
-            {v?.cta && (
-              <div className="px-3.5 pb-3">
-                <div className="w-full rounded-lg py-2 text-center text-[13px] font-semibold text-white" style={{ background: "linear-gradient(135deg, #8b5cf6, #d946ef)" }}>
-                  {v.cta}
-                </div>
-              </div>
-            )}
-            {(v?.voiceAudio || v?.sfxAudio) && (
-              <div className="border-t border-zinc-100 px-3.5 py-2 space-y-1.5">
-                {v.voiceAudio && <audio controls src={v.voiceAudio} className="h-8 w-full" preload="none" onPlay={(e) => exclusivePlay(e.currentTarget)} />}
-                {v.sfxAudio && <audio controls src={v.sfxAudio} className="h-8 w-full" preload="none" onPlay={(e) => exclusivePlay(e.currentTarget)} />}
-              </div>
-            )}
-          </div>
-          )}
+          </MobileDeviceFrame>
         </section>
       </div>
     </main>

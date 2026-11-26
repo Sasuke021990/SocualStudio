@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import type { ContentItem, ContentStatus } from "@/features/content-dashboard/types";
 import { BackPill } from "@/components/nav";
 import { IconImage, IconSpark } from "@/components/icons";
-import { assembleImagePrompt } from "@/features/content-dashboard/variations";
+import { assembleImagePrompt, DEFAULT_NO_TEXT_NEGATIVE_PROMPT } from "@/features/content-dashboard/variations";
 import { exclusivePlay } from "@/features/voice/audio-coordinator";
 import { acquireGenerationLock, releaseGenerationLock } from "@/features/content-dashboard/generation-lock";
 import { useGenerationLocked } from "@/features/content-dashboard/useGenerationLock";
@@ -280,7 +280,13 @@ export default function WorkspaceClient() {
       const res = await fetch("/api/comfyui/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: fullPrompt, connectionId: toolId ?? undefined, width: 1024, height: 1024 }),
+        body: JSON.stringify({
+          prompt: fullPrompt,
+          negativePrompt: DEFAULT_NO_TEXT_NEGATIVE_PROMPT,
+          connectionId: toolId ?? undefined,
+          width: 1024,
+          height: 1024,
+        }),
       });
       const data = await res.json() as { images?: Array<{ url: string }>; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Image generation failed");
@@ -413,11 +419,11 @@ export default function WorkspaceClient() {
       </div>
 
       <div className="mx-auto grid max-w-5xl gap-6 px-6 py-8 lg:grid-cols-2 lg:items-start">
-        {/* LEFT: Instagram post / Reel */}
+        {/* LEFT: Instagram post / Reel — always housed in MobileDeviceFrame */}
         <div className="mx-auto flex w-full justify-center" style={{ maxWidth: 420 }}>
-          {cardView === "reel" && reelMeta ? (
-            <MobileDeviceFrame
-              viewToggle={
+          <MobileDeviceFrame
+            viewToggle={
+              reelMeta ? (
                 <div className="flex gap-1 rounded-full bg-black/60 p-0.5 backdrop-blur-md ring-1 ring-white/10">
                   {(["image", "reel"] as const).map((v) => (
                     <button
@@ -433,107 +439,92 @@ export default function WorkspaceClient() {
                     </button>
                   ))}
                 </div>
-              }
-            >
+              ) : undefined
+            }
+          >
+            {cardView === "reel" && reelMeta ? (
               <ReelPlayer
-                src={`/api/reel/file?item=${id}`}
+                src={`/api/reel/file?item=${id}&v=${encodeURIComponent(reelMeta.createdAt)}`}
                 brandName={item.brandName}
                 handle={handle}
                 caption={caption}
                 hashtags={hashtags}
               />
-            </MobileDeviceFrame>
-          ) : (
-            <div className="w-full overflow-hidden rounded-2xl border-2 border-zinc-200 dark:border-zinc-700" style={{ background: "#fff" }}>
-              <div className="flex items-center gap-2.5 px-3.5 py-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: "linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" }}>
-                  {item.brandName.charAt(0).toUpperCase()}
-                </div>
-                <div className="text-[13px] font-semibold" style={{ color: "#262626" }}>{handle}</div>
-              </div>
-
-              {/* Feed Image */}
-              <div
-                className="relative flex aspect-square items-center justify-center overflow-hidden"
-                style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}
-              >
-                {reelMeta && (
-                  <div className="absolute left-3 top-3 z-20 flex gap-1.5">
-                    {(["image", "reel"] as const).map((v) => (
-                      <button
-                        key={v}
-                        type="button"
-                        aria-pressed={cardView === v}
-                        onClick={() => setCardView(v)}
-                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize backdrop-blur-sm transition ${
-                          cardView === v ? "bg-white text-zinc-800" : "bg-black/50 text-white hover:bg-black/70"
-                        }`}
-                      >
-                        {v}
-                      </button>
-                    ))}
+            ) : (
+              <div className="h-full w-full overflow-y-auto bg-white pt-8 pb-6">
+                <div className="flex items-center gap-2.5 px-3.5 py-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: "linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" }}>
+                    {item.brandName.charAt(0).toUpperCase()}
                   </div>
-                )}
-                {image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={image.url} alt={item.title} className="absolute inset-0 h-full w-full object-cover" />
-                ) : (
-                  <div className="relative z-10 flex w-full flex-col items-center gap-2 px-4 text-center">
-                    <IconImage size={40} className="text-white/90" />
-                    <div className="w-full space-y-0.5 text-left">
-                      {Object.entries(imageConcept).map(([key, val]) => (
-                        <div key={key} className="flex gap-1 text-[9px] leading-tight text-white/90">
-                          <span className="font-semibold capitalize opacity-70">{key.replace(/([A-Z])/g, " $1")}:</span>
-                          <span className="line-clamp-1">{val}</span>
-                        </div>
-                      ))}
+                  <div className="text-[13px] font-semibold" style={{ color: "#262626" }}>{handle}</div>
+                </div>
+
+                {/* Feed Image */}
+                <div
+                  className="relative flex aspect-square items-center justify-center overflow-hidden"
+                  style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}
+                >
+                  {image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={image.url} alt={item.title} className="absolute inset-0 h-full w-full object-cover" />
+                  ) : (
+                    <div className="relative z-10 flex w-full flex-col items-center gap-2 px-4 text-center">
+                      <IconImage size={40} className="text-white/90" />
+                      <div className="w-full space-y-0.5 text-left">
+                        {Object.entries(imageConcept).map(([key, val]) => (
+                          <div key={key} className="flex gap-1 text-[9px] leading-tight text-white/90">
+                            <span className="font-semibold capitalize opacity-70">{key.replace(/([A-Z])/g, " $1")}:</span>
+                            <span className="line-clamp-1">{val}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    className="absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full bg-white/90 px-4 py-2 text-xs font-semibold text-zinc-800 shadow-lg transition hover:bg-white disabled:opacity-70"
+                    disabled={readOnly || generatingImage || (anyGenerating && !generatingImage)}
+                    onClick={generateImage}
+                  >
+                    {generatingImage ? "Generating image..." : image ? "Regenerate Image" : "Generate Image"}
+                  </button>
+                  {imageError && <div className="absolute bottom-12 left-3 right-3 z-20 rounded-lg bg-red-500/90 px-3 py-1.5 text-[10px] text-white">{imageError}</div>}
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-3 px-3.5 py-2.5">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8" className="ml-auto"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
+
+                <div className="px-3.5 pb-2">
+                  <p className="text-[13px] leading-[18px]" style={{ color: "#262626" }}>
+                    <span className="font-semibold">{handle}</span> {caption}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 px-3.5 pb-2">
+                  {hashtags.map((tag, i) => (
+                    <span key={i} className="text-[12px]" style={{ color: "#00376b" }}>#{tag}</span>
+                  ))}
+                </div>
+                {cta && (
+                  <div className="px-3.5 pb-3">
+                    <div className="w-full rounded-lg py-2 text-center text-[13px] font-semibold text-white" style={{ background: "linear-gradient(135deg, #8b5cf6, #d946ef)" }}>
+                      {cta}
                     </div>
                   </div>
                 )}
-                <button
-                  type="button"
-                  className="absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full bg-white/90 px-4 py-2 text-xs font-semibold text-zinc-800 shadow-lg transition hover:bg-white disabled:opacity-70"
-                  disabled={readOnly || generatingImage || (anyGenerating && !generatingImage)}
-                  onClick={generateImage}
-                >
-                  {generatingImage ? "Generating image..." : image ? "Regenerate Image" : "Generate Image"}
-                </button>
-                {imageError && <div className="absolute bottom-12 left-3 right-3 z-20 rounded-lg bg-red-500/90 px-3 py-1.5 text-[10px] text-white">{imageError}</div>}
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-3 px-3.5 py-2.5">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="1.8" className="ml-auto"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </div>
-
-              <div className="px-3.5 pb-2">
-                <p className="text-[13px] leading-[18px]" style={{ color: "#262626" }}>
-                  <span className="font-semibold">{handle}</span> {caption}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 px-3.5 pb-2">
-                {hashtags.map((tag, i) => (
-                  <span key={i} className="text-[12px]" style={{ color: "#00376b" }}>#{tag}</span>
-                ))}
-              </div>
-              {cta && (
-                <div className="px-3.5 pb-3">
-                  <div className="w-full rounded-lg py-2 text-center text-[13px] font-semibold text-white" style={{ background: "linear-gradient(135deg, #8b5cf6, #d946ef)" }}>
-                    {cta}
+                {(audio || sfx) && (
+                  <div className="border-t border-zinc-100 px-3.5 py-2 space-y-2">
+                    {audio && <audio controls src={audio.url} className="block w-full" preload="none" onPlay={(e) => exclusivePlay(e.currentTarget)} />}
+                    {sfx && <audio controls src={sfx.audio.url} className="block w-full" preload="none" onPlay={(e) => exclusivePlay(e.currentTarget)} />}
                   </div>
-                </div>
-              )}
-              {(audio || sfx) && (
-                <div className="border-t border-zinc-100 px-3.5 py-2 space-y-2">
-                  {audio && <audio controls src={audio.url} className="block w-full" preload="none" onPlay={(e) => exclusivePlay(e.currentTarget)} />}
-                  {sfx && <audio controls src={sfx.audio.url} className="block w-full" preload="none" onPlay={(e) => exclusivePlay(e.currentTarget)} />}
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
+          </MobileDeviceFrame>
         </div>
 
         {/* RIGHT: tools + editing */}

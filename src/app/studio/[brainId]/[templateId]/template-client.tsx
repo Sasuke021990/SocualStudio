@@ -116,6 +116,7 @@ export default function TemplateClient() {
         signal: controller.signal,
         body: JSON.stringify({
           brandName,
+          brainId,
           topic: topic.trim(),
           platform: tpl.platform,
           contentType: tpl.label,
@@ -169,19 +170,19 @@ export default function TemplateClient() {
   const saveSelected = async () => {
     if (!tpl || selectedIds.size === 0 || saving) return;
     setSaving(true);
+    setError(null);
     try {
-      for (const v of variations.filter((x) => selectedIds.has(x.id))) {
-        const media = mediaMap[v.id] ?? {};
-        await fetch("/api/content-dashboard", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+      const itemsToSave = variations
+        .filter((x) => selectedIds.has(x.id))
+        .map((v) => {
+          const media = mediaMap[v.id] ?? {};
+          return {
             brandName,
             brainId,
             type: tpl.id,
             title: v.caption.slice(0, 80) || tpl.label,
-            prompt: tpl.defaultPrompt.replace("{topic}", topic),
-            output: v.caption,
+            prompt: tpl.defaultPrompt.replace("{topic}", topic) || tpl.label,
+            output: v.caption || tpl.label,
             platform: tpl.platform,
             variation: {
               imageConcept: v.imageConcept as unknown as Record<string, string>,
@@ -193,9 +194,20 @@ export default function TemplateClient() {
               voiceAudio: media.voiceAudio ?? null,
               sfxAudio: media.sfxAudio ?? null,
             },
-          }),
+          };
         });
+
+      const res = await fetch("/api/content-dashboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: itemsToSave }),
+      });
+
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? `Save failed (${res.status})`);
       }
+
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
       setSelectedIds(new Set());

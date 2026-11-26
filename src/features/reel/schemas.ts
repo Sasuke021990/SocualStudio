@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { cleanCaption } from "@/features/prompts/clean";
 
 export const reelStyleSchema = z.enum(["high-energy", "cinematic", "tech-explainer", "minimalist"]);
 export type ReelStyle = z.infer<typeof reelStyleSchema>;
@@ -68,17 +69,12 @@ export const reelSpecSchema = z
     style: reelStyleSchema.default("high-energy"),
     /** How many storyboard images to generate and use (1–3). */
     imageCount: z.union([z.literal(1), z.literal(2), z.literal(3)]),
-    /** Spoken narration — also the on-screen captions. */
+    /** Spoken narration — also the on-screen captions. Auto-sanitized to strip emojis/hashtags. */
     narration: z
       .string()
-      .min(30)
-      .max(600)
-      .refine((s) => !/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}]/u.test(s), {
-        message: "narration must not contain emojis",
-      })
-      .refine((s) => !/#[\p{L}\p{N}_]/u.test(s), {
-        message: "narration must not contain hashtags",
-      }),
+      .min(10)
+      .max(1000)
+      .transform((s) => cleanCaption(s).caption),
     /** One visual brief per image, following the narration beats. */
     imageBriefs: z.array(z.string().min(5).max(500)).min(1).max(3),
     /** MrBeast-style punchy kinetic word popups for the hook. */
@@ -111,25 +107,15 @@ export const reelSpecSchema = z
       })
       .default({ position: "bottom", fontSize: 52, stroke: 3, safeMargin: 0.20 }),
   })
-  .superRefine((val, ctx) => {
-    const words = val.narration.trim().split(/\s+/).length;
-    // Calibrated for natural 2.6 words/sec speech (Solution C)
-    const minWords = val.durationSeconds === 15 ? 28 : 65;
-    const maxWords = val.durationSeconds === 15 ? 52 : 115;
-    if (words < minWords || words > maxWords) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["narration"],
-        message: `narration must be ${minWords}–${maxWords} words for a ${val.durationSeconds}s reel (got ${words})`,
-      });
+  .transform((val) => {
+    const briefs = [...val.imageBriefs];
+    while (briefs.length < val.imageCount) {
+      briefs.push(briefs[briefs.length - 1] ?? "Cinematic vertical brand scene, pure photography, no text");
     }
-    if (val.imageBriefs.length !== val.imageCount) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["imageBriefs"],
-        message: `imageBriefs length must equal imageCount (${val.imageCount})`,
-      });
-    }
+    return {
+      ...val,
+      imageBriefs: briefs.slice(0, val.imageCount),
+    };
   });
 
 export type ReelSpec = z.infer<typeof reelSpecSchema>;

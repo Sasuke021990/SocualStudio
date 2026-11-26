@@ -27,16 +27,28 @@ export const postVariationSchema = z.object({
 
 export type PostVariation = z.infer<typeof postVariationSchema>;
 
-/** Assemble the final ComfyUI prompt deterministically from the 8 fields. */
+export const DEFAULT_NO_TEXT_NEGATIVE_PROMPT =
+  "text, typography, letters, words, caption, subtitle, watermark, logo, brand mark, signature, badge, UI overlay, screen text, signage, company name, GitHub logo";
+
+/** Assemble the final ComfyUI prompt deterministically from the 8 fields, stripping text cues. */
 export function assembleImagePrompt(c: ImageConcept): string {
-  return [
-    c.subject,
-    c.setting,
-    c.lighting,
-    c.colorPalette,
-    c.style,
-    c.composition,
-    c.mood,
-    c.technical,
-  ].join(", ");
+  const sanitize = (s: string) =>
+    s
+      .replace(/\b(text|words|letters|typography|logo|watermark|badge|signage|label|brand name)\b/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const parts = [
+    sanitize(c.subject),
+    sanitize(c.setting),
+    sanitize(c.lighting),
+    sanitize(c.colorPalette),
+    sanitize(c.style),
+    sanitize(c.composition),
+    sanitize(c.mood),
+    sanitize(c.technical),
+    "clean composition, pure photography, no text, no watermark, no logo",
+  ].filter(Boolean);
+
+  return parts.join(", ");
 }
