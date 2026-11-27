@@ -113,9 +113,21 @@ were checked against `add_transition.transitionType`'s enum and
 | **Clean Editorial** | crossfade only | none | near-neutral | text-type-on |
 | **Modern Social** | push, radialWipe, circleReveal | vibrance, glow | punchy, controlled saturation | glyph-glow-wave (verify in `list_motion_shaders`) |
 
-`high-energy`, `tech-explainer`, `minimalist` stay in the `ReelStyle`
-union and `directivesForStyle()` switch unchanged, so existing saved reels
-with those styles keep working. The old `"cinematic"` key's definition
+**Correction (made while implementing, 2026-11-26):** this section originally
+said `tech-explainer` stays unchanged, which contradicted the Modern Social
+row above it — Modern Social needed a `ReelStyle` key to live under, and
+there is no fourth slot, so it occupies `tech-explainer`. `high-energy` and
+`minimalist` are the ones that stay in the `ReelStyle` union and
+`directivesForStyle()` switch unchanged (`minimalist`'s existing values
+already match the Clean Editorial row above, so only its UI label changes).
+The `tech-explainer` key's definition (push/radialWipe/blinds transitions,
+halftone VFX) is **replaced in place** by the Modern Social preset values
+from the table above, the same pattern as cinematic below — one key, one
+name, no `legacy-tech-explainer` split. A saved `ReelSpec` with
+`style: "tech-explainer"` still renders (the key exists), it just looks
+like Modern Social if that reel is ever regenerated.
+
+The old `"cinematic"` key's definition
 (filmBurn/zoom/dipToBlack transitions, vignette/glow VFX) is **replaced
 in place** by the new Cinematic preset values from the table above — one
 key, one name, no `legacy-cinematic` split. A saved `ReelSpec` with

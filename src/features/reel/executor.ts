@@ -34,8 +34,10 @@ const NON_FATAL_TOOLS = new Set<string>([
 // (Final review #1) rather than added here — see composer.ts.
 
 export class ReelStepError extends Error {
-  constructor(readonly stepLabel: string, message: string) {
+  readonly stepLabel: string;
+  constructor(stepLabel: string, message: string) {
     super(`${stepLabel}: ${message}`);
+    this.stepLabel = stepLabel;
     this.name = "ReelStepError";
   }
 }
@@ -136,7 +138,18 @@ export async function runSteps(conn: McpConnection, steps: ReelToolStep[]): Prom
         continue;
       }
     } else {
-      text = await conn.callTool(step.tool, args);
+      try {
+        text = await conn.callTool(step.tool, args);
+      } catch (err) {
+        // A thrown error (e.g. MCP isError:true) for a fatal step used to be
+        // impossible — callTool returned the error as text, which the
+        // ERROR_CODES check below wrapped in a ReelStepError. Now that the
+        // MCP client throws on isError, a fatal step's failure must still
+        // come out as a ReelStepError so callers (route.ts) get the step
+        // label, not a bare, unlabeled error (review fix).
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new ReelStepError(step.label, msg);
+      }
     }
 
     if (ERROR_CODES.test(text)) {
@@ -191,12 +204,22 @@ export async function runSteps(conn: McpConnection, steps: ReelToolStep[]): Prom
           const ratio = Math.max(mediaAspect, frameAspect) / Math.min(mediaAspect, frameAspect);
           if (ratio > 1.02) {
             // fitMode cover: fill the 9:16 frame, crop the overflow (no scale math).
-            const trText = await conn.callTool("set_clip_transform", {
-              clipId,
-              transform: { fitMode: "cover" },
-            });
-            if (ERROR_CODES.test(trText)) {
-              console.warn(`[reel] cover-fit failed for ${step.clipName}:`, trText.slice(0, 200));
+            // set_clip_transform is on the non-fatal list, so a failure here —
+            // whether returned as error text or thrown (MCP isError) — must
+            // never abort the whole render over a cosmetic crop (review fix).
+            try {
+              const trText = await conn.callTool("set_clip_transform", {
+                clipId,
+                transform: { fitMode: "cover" },
+              });
+              if (ERROR_CODES.test(trText)) {
+                console.warn(`[reel] cover-fit failed for ${step.clipName}:`, trText.slice(0, 200));
+              }
+            } catch (err) {
+              console.warn(
+                `[reel] cover-fit threw for ${step.clipName}:`,
+                err instanceof Error ? err.message : String(err),
+              );
             }
           }
         }

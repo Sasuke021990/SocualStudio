@@ -50,7 +50,7 @@ export interface PlanReelInput {
   /** User's creative direction from the "15-sec reel prompt" field. */
   reelPrompt: string;
   durationSeconds: 15 | 30;
-  imageCount: 1 | 2 | 3;
+  imageCount: number;
   style?: ReelStyle;
 }
 
@@ -81,7 +81,14 @@ RULES:
 - Narration: EXACTLY ${words} words total. This timing is CRITICAL for the voice synthesizer.
 - Sentences ARE the captions: spoken text, verbatim, no emojis, no hashtags.
 - Self-score your hook 1–10 on "would a stranger stop scrolling?" Be honest.
-- imageBriefs: JSON array of exactly ${input.imageCount} NON-EMPTY strings — one visual brief per time slice. Each brief: subject, setting, light, mood, vertical composition — under 40 words. Photographic, consistent style.
+- imageBriefs: JSON array of exactly ${input.imageCount} NON-EMPTY strings — one storyboard frame per time slice, matched to that specific moment in the narration (the hook frame should visually punch as hard as the hook line; the payoff frame should visually land the payoff). Each brief: specific subject, setting, lighting, mood, vertical composition — under 40 words, photographic, consistent visual style (same color grade, same world) across the whole reel.
+  - Not every frame needs a person — mix product/object shots, environment/mood shots, and human-focus shots across the sequence; use whichever sells that narration beat hardest.
+  - Be concrete, not generic: name the object, material, color, or action instead of writing "a nice photo of X". A stranger should be able to picture the exact frame from the brief alone.
+  - Vary shot type and framing across the sequence (wide, medium, macro/close-up, overhead) so consecutive frames don't feel repetitive — but keep lighting, color palette, and "world" consistent so the reel reads as one continuous story, not unrelated stock photos.
+  - If the same person, product, or location needs to recur across multiple frames, describe it identically each time (same clothing, same object, same room) so the visuals stay continuous.
+  - Example (human focus): "Young Indian founder laughing mid-sentence in a sunlit co-working space, leaning forward with energy, vertical medium shot, shallow depth of field"
+  - Example (product focus): "Close-up of a phone screen lighting up with a notification, warm desk lamp glow, vertical macro shot, shallow depth of field"
+  - Example (environment focus): "Empty late-night office with one lit desk lamp and a steaming chai cup, moody blue-gold contrast, vertical wide shot"
 - kineticPopups: JSON array of 1–3 punchy uppercase keyword cards for the hook (e.g. [{"text": "STOP SCROLLING", "startTime": 0.2, "duration": 1.5}]).
 - musicMood: 2–5 words describing the background music vibe.
 - cta: max 3 words or omit it.

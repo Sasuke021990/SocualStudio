@@ -1,16 +1,7 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { getContentItem, updateContentItem } from "@/features/content-dashboard/store";
 import { planReelSpec } from "@/features/reel/planner";
-import { reelStyleSchema } from "@/features/reel/schemas";
-
-const planRequestSchema = z.object({
-  itemId: z.string().min(1),
-  prompt: z.string().min(1, "Reel prompt required").max(500),
-  durationSeconds: z.union([z.literal(15), z.literal(30)]),
-  imageCount: z.union([z.literal(1), z.literal(2), z.literal(3)]),
-  style: reelStyleSchema.optional(),
-});
+import { planRequestSchema } from "@/features/reel/schemas";
 
 /** Plan a reel (Viral Director → strict ReelSpec) and persist it on the post. */
 export async function POST(request: Request) {

@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getWorkspaceConfig } from "@/features/workspace-config/store";
 
@@ -51,6 +51,20 @@ export async function wavDurationSec(filePath: string): Promise<number> {
     pos += 8 + size + (size % 2);
   }
   throw new Error("WAV data chunk not found");
+}
+
+/**
+ * Guard against the export tool reporting success without actually writing a
+ * file (or writing an empty placeholder) — the last-resort check before
+ * copyReelToExport, which otherwise fails with a raw, confusing ENOENT.
+ */
+export async function assertRenderedFileExists(path: string): Promise<void> {
+  const info = await stat(path).catch(() => null);
+  if (!info || info.size === 0) {
+    throw new Error(
+      `Export did not produce a file at ${path} — check OpenReel is running and not waiting on a confirmation prompt`,
+    );
+  }
 }
 
 /** Copy the rendered reel into the workspace export folder (per-post subfolder). */
