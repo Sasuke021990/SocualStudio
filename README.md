@@ -328,6 +328,20 @@ All three must pass green.
 
 ---
 
+## Recent fixes & root causes
+
+| Fix | Root cause | Detail |
+|---|---|---|
+| Reel export "Relink the original media" | Motion-composition popups (`insert_motion_into_editor`) create `motion-motion-instance-*` media that never enters the media library → every export path refuses it. App-side gap. | Popups now use Essential Graphics `insert_graphic_template` (animated, exports clean). [Full analysis](docs/2026-11-27-motion-export-root-cause.md) |
+| Voice clone rejected (MP3/MP4) | Ming TTS engine requires PCM WAV | Uploads auto-converted via ffmpeg; accept list widened |
+| "Voice is Xs — should be about Ys" | TTS length ≠ target reel length | Auto-retry synthesis ×3 + widened speed-fit (0.6–1.5×); only unusable lengths fail |
+| Captions carried hashtags + emojis | LLM mixed caption/tags | Zod rules (auto-retry on violation) + sanitizer: tags → HASHTAGS field, emoji stripped |
+| Reel half-image / black bars | Reused 1:1 images in 9:16 frame; UI showed video in square box | `fitMode: cover` on off-aspect clips; 9:16 display box |
+| Generate Reel stuck "voice-over first" | Save from stale tabs wiped variation fields | Save payloads omit absent media; server merges variation; generate accepts client-side media |
+| NDJSON stream died behind proxies | Long streams break on some networks | Job + polling architecture (`/api/reel/job`) |
+| PC desktop clicks dead in editor | Decorative overlays swallowed clicks in 2-col layout | `pointer-events: none` on hero overlays |
+| Planning slow after generation | LLM unloaded for VRAM, cold reload on next call | 10-min patient timeouts (no warm-back preload) |
+
 ## License
 
 Private project. Third-party model licenses apply to their respective weights (Ming TTS: MIT, MOSS: Apache-2.0, audio.cpp: MIT).
