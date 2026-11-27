@@ -224,55 +224,26 @@ export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { proj
     }
   }
 
-  // Kinetic hook-text popups (MrBeast-style): each one is its own Motion
-  // Creator composition with a single per-glyph animated text layer, placed
-  // onto the main timeline. All four steps are non-fatal creative polish —
-  // if the composition fails to create, the dependent layer/animator/insert
-  // steps fail too (their tokens won't resolve), which is an accepted
-  // cascade rather than special-cased handling (see design doc section 9e).
-  // Known limitation carried over from the original plain-text hook: no
-  // code-side handling of popup.position is attempted here either.
-  spec.kineticPopups.forEach((popup, n) => {
-    const compositionToken = `__composition:popup${n}__`;
-    const layerToken = `__layer:popup${n}__`;
+  // Kinetic hook-text popups via Essential Graphics templates. The native
+  // motion-composition path (create_motion_composition / insert_motion_into_editor)
+  // produces offline media that every export path refuses ("Relink the original
+  // media before exporting") — graphic templates are the working rendered-scene
+  // path (verified by probe: exports clean, animated intro/outro built in).
+  spec.kineticPopups.forEach((popup) => {
     steps.push({
-      label: `Create popup composition "${popup.text}"`,
-      tool: "create_motion_composition",
+      label: `Popup "${popup.text}"`,
+      tool: "insert_graphic_template",
       args: {
-        name: `Popup ${n + 1}: ${popup.text}`,
-        duration: popup.duration,
-        width: spec.format.width,
-        height: spec.format.height,
-        frameRate: spec.format.fps,
+        templateId: "builtin-title-hero",
+        startTime: popup.startTime,
+        duration: Math.min(6, Math.max(1.9, popup.duration)),
+        values: {
+          title: popup.text,
+          showSubtitle: false,
+          titleColor: popup.color ?? "#ffffff",
+          lineColor: popup.strokeColor ?? "#000000",
+        },
       },
-      captureAs: compositionToken,
-    });
-    steps.push({
-      label: `Add popup text layer "${popup.text}"`,
-      tool: "add_motion_layer",
-      args: {
-        compositionId: compositionToken,
-        layerType: "text",
-        text: popup.text,
-        color: popup.color,
-        strokeColor: popup.strokeColor,
-        fontSize: popup.fontSize,
-      },
-      captureAs: layerToken,
-    });
-    const animator = styleDirectives.popupAnimator;
-    steps.push({
-      label: `Animate popup "${popup.text}"`,
-      tool: animator.tool,
-      args:
-        animator.tool === "add_motion_text_shader_animator"
-          ? { compositionId: compositionToken, layerId: layerToken, shaderId: animator.presetOrShaderId }
-          : { compositionId: compositionToken, layerId: layerToken, presetId: animator.presetOrShaderId },
-    });
-    steps.push({
-      label: `Place popup "${popup.text}" on timeline`,
-      tool: "insert_motion_into_editor",
-      args: { compositionId: compositionToken, startTime: popup.startTime, duration: popup.duration },
     });
   });
 
@@ -376,23 +347,6 @@ export function composeReelPlan(spec: ReelSpec, assets: ReelAssets, opts: { proj
   // The narration is TTS from a clean generated script, not live dictation,
   // so there's no real "filler" or dead air to remove in the first place.
   steps.push({ label: "Caption QC", tool: "caption_qc", args: {} });
-
-  // Beat-sync pulse on the hook popup, only when there's both music to sync
-  // to and a popup layer to pulse. Always targets popup index 0 — more
-  // popups pulsing independently is a future enhancement, not this task's
-  // scope (design doc 9c item 7).
-  if (assets.musicSeconds > 1 && spec.kineticPopups.length > 0) {
-    steps.push({
-      label: "Sync motion to music beat",
-      tool: "sync_motion_to_audio",
-      args: { compositionId: "__composition:popup0__", mediaId: mediaToken("music") },
-    });
-    steps.push({
-      label: "Pulse hook text on beat",
-      tool: "apply_motion_preset_to_beats",
-      args: { compositionId: "__composition:popup0__", layerId: "__layer:popup0__", presetId: "pulse" },
-    });
-  }
 
   steps.push({
     label: `Export ${D}s reel`,
